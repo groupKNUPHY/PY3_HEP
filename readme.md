@@ -8,5 +8,7 @@ cmsenv
 ```  
 
 Test environment using numba examples: numba_tuto.py  
-
+```bash  
+pip3 install numba --user  
+```
 
