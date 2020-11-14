@@ -1,5 +1,5 @@
 ### Setup pythonic HEP tools  
-Include uproot3,uproot4,awkward,awkward1,numba,mplHEP,boost_histogram  
+Include **uproot3,uproot4,awkward,awkward1,numba,mplHEP,boost_histogram**  
 ```bash
 /home/jwkim/Anaconda3/setup.sh  
 ```  
