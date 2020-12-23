@@ -1,40 +1,30 @@
 import awkward1 as ak
 from coffea.nanoevents import NanoEventsFactory, NanoAODSchema
 import time
+from coffea import processor, hist
+from coffea.util import load, save
 start = time.time()
 
 
-## read NanoAOD file from link...
 
-# 40 events
-#fname = "https://raw.githubusercontent.com/CoffeaTeam/coffea/master/tests/samples/nano_dy.root"
+import argparse
 
+parser = argparse.ArgumentParser()
+
+parser.add_argument('--nWorker', type=int,
+            help=" --nWorker 2")
+parser.add_argument('--nData', type=str,
+            help="--nData datalist")
+
+
+args = parser.parse_args()
+
+
+## Single events process
 # Many events
-fname = "/x6/cms/store/mc/RunIISummer19UL18NanoAODv2/WZ_TuneCP5_13TeV-pythia8/NANOAODSIM/106X_upgrade2018_realistic_v15_L1v1-v1/40000/809D80E0-A0EB-5548-BCD1-58C4A1C1A71C.root"
+#filelist = "/x6/cms/store/mc/RunIISummer19UL18NanoAODv2/WZ_TuneCP5_13TeV-pythia8/NANOAODSIM/106X_upgrade2018_realistic_v15_L1v1-v1/40000/809D80E0-A0EB-5548-BCD1-58C4A1C1A71C.root"
 
 
-
-
-
-
-
-
-## Procedural method Calculate Mass(mu+mu-)----> 
-'''
-events = NanoEventsFactory.from_file(fname, schemaclass=NanoAODSchema).events()
-
-mmevents = events[ak.num(events.Muon) == 2]
-zmm = mmevents.Muon[:, 0] + mmevents.Muon[:, 1]
-print(zmm.mass)
-'''
-## <----------------------------
-
-
-
-
-
-## OOP method: ProcessorABC  Calculate Mass(Mu+Mu-)---->
-from coffea import processor, hist
 
 # ---> Class MuZPeak
 class MyZPeak(processor.ProcessorABC):
@@ -78,13 +68,14 @@ class MyZPeak(processor.ProcessorABC):
 		return accumulator	
 # <---- Class MyZPeak
 
-samples = {
-	"DrellYan" : [fname]
-}
+#samples = {
+#	"DrellYan" : [fname]
+#}
 
 
 
 ## Single node Executor
+'''
 result = processor.run_uproot_job(
 	samples,  #dataset
 	"Events", # Tree name
@@ -92,25 +83,44 @@ result = processor.run_uproot_job(
 	processor.iterative_executor, #executor
 	{"schema": NanoAODSchema}, # executor arguments
 )
-
-
-## Multi-node Executor
 '''
+
+## Prepare files
+N_node = args.nWorker
+datalist = args.nData
+
+filelist=[]
+with open(datalist) as fhand:
+	for line in fhand:
+		line = line.rstrip()
+		filelist.append(line)
+	fhand.seek(0)
+	
+samples = {
+	"WZ" : filelist
+}
+
+
+## -->Multi-node Executor
 result = processor.run_uproot_job(
 	samples,  #dataset
 	"Events", # Tree name
 	MyZPeak(), # Class
 	executor=processor.futures_executor,
-    executor_args={"schema": NanoAODSchema, "workers": 2},
-    maxchunks=4,
+    executor_args={"schema": NanoAODSchema, "workers": N_node},
+    #maxchunks=4,
 )
-'''
 
 
 # Draw hist
-import matplotlib.pyplot as plt
-hist.plot1d(result)
-plt.savefig("Zmumu.png")
+#import matplotlib.pyplot as plt
+#hist.plot1d(result)
+#plt.savefig("Zmumu.png")
+
+import os
+os.system("mkdir hists")
+save(result,'hists/Zmm.futures')
+
 
 
 
