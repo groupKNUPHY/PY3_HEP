@@ -7,10 +7,10 @@ start = time.time()
 ## read NanoAOD file from link...
 
 # 40 events
-fname = "https://raw.githubusercontent.com/CoffeaTeam/coffea/master/tests/samples/nano_dy.root"
+#fname = "https://raw.githubusercontent.com/CoffeaTeam/coffea/master/tests/samples/nano_dy.root"
 
 # Many events
-#fname = "/x6/cms/store/mc/RunIISummer19UL18NanoAODv2/WZ_TuneCP5_13TeV-pythia8/NANOAODSIM/106X_upgrade2018_realistic_v15_L1v1-v1/40000/809D80E0-A0EB-5548-BCD1-58C4A1C1A71C.root"
+fname = "/x6/cms/store/mc/RunIISummer19UL18NanoAODv2/WZ_TuneCP5_13TeV-pythia8/NANOAODSIM/106X_upgrade2018_realistic_v15_L1v1-v1/40000/809D80E0-A0EB-5548-BCD1-58C4A1C1A71C.root"
 
 
 
@@ -84,7 +84,7 @@ samples = {
 
 
 
-## Single Thread Executor
+## Single node Executor
 result = processor.run_uproot_job(
 	samples,  #dataset
 	"Events", # Tree name
@@ -94,7 +94,7 @@ result = processor.run_uproot_job(
 )
 
 
-## Multi-Thread Executor
+## Multi-node Executor
 '''
 result = processor.run_uproot_job(
 	samples,  #dataset
