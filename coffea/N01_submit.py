@@ -19,7 +19,7 @@ Error = hists/run_condor/err/$ENV(SAMPLE)_$(Cluster)_$(Process).stderr
 Log = hists/run_condor/log/$ENV(SAMPLE)_$(Cluster)_$(Process).log
 Should_Transfer_Files = YES
 WhenToTransferOutput = ON_EXIT
-Arguments = $ENV(METADATA) $ENV(SAMPLE)  $ENV(USER)
+Arguments = $ENV(METADATA) $ENV(SAMPLE)
 transfer_output_files="hists/run_condor/condorOut"
 Queue 1"""
 
@@ -35,4 +35,4 @@ for info,dataset in datadict.items():
     os.environ['SAMPLE'] = dataset
     os.environ['METADATA']   = metadata
     os.system('condor_submit run.submit')
-#os.system('rm run.submit')
+os.system('rm run.submit')

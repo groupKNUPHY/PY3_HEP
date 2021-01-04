@@ -1,4 +1,5 @@
-import awkward1 as ak
+import awkward as ak
+from coffea.nanoaod import NanoEvents
 from coffea.nanoevents import NanoEventsFactory, NanoAODSchema
 import time
 from coffea import processor, hist
@@ -48,13 +49,31 @@ class MyZPeak(processor.ProcessorABC):
 		out = self.accumulator.identity()
 
 		# Event selection: opposite charged same flavor
-		mmevents = events[
-			(ak.num(events.Muon) == 2) 
-			& (ak.sum(events.Muon.charge, axis=1) == 0 )
-		]
+#		mmevents = events[
+#			(ak.num(events.Muon) == 2) 
+#			& (ak.sum(events.Muon.charge, axis=1) == 0 )
+#		]
+
+
+		Muon = events.Muon
+		Muon_mask =  (Muon.pt > 20)
+		Sel_Muon = Muon[Muon_mask].counts > 1
+
+		mmevents = events[Sel_Muon] # events with two or more selected muon
+			
+
+		Sel_Muon = mmevents.Muon
+		mm_pair = Sel_Muon.choose(2)
+		OSSFmask = (mm_pair.i0 != mm_pair.i1) # Opposite sign same flavor
+		mm_pair = mm_pair[OSSFmask]
+		
+
+		# Select High-PT oreder set
+		mm_pair = mm_pair[mm_pair.i0.pt.argmax()]
+		
 
 		# Select Muon and do Lorentz sum
-		zmm = mmevents.Muon[:,0] + mmevents.Muon[:,1]
+		zmm = mm_pair.i0 + mm_pair.i1
 		
 		out.fill(
 			dataset = events.metadata["dataset"],
@@ -108,6 +127,7 @@ result = processor.run_uproot_job(
 	MyZPeak(), # Class
 	executor=processor.futures_executor,
     executor_args={"schema": NanoAODSchema, "workers": N_node},
+    #executor_args={'nano':True, "workers": N_node},
     #maxchunks=4,
 )
 
