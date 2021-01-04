@@ -12,7 +12,7 @@ import argparse
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--nWorker', type=int,
-            help=" --nWorker 2")
+            help=" --nWorker 2", default=4)
 parser.add_argument('--nData', type=str,
             help="--nData datalist")
 
