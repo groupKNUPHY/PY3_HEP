@@ -16,7 +16,7 @@ start = time.time()
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--nWorker', type=int,
-			help=" --nWorker 2", default=8)
+			help=" --nWorker 2", default=20)
 parser.add_argument('--metadata', type=str,
 			help="--metadata xxx.json")
 parser.add_argument('--dataset', type=str,
@@ -32,29 +32,41 @@ class MyZPeak(processor.ProcessorABC):
 
 	# -- Initializer
 	def __init__(self):
-		self._histo = hist.Hist(
-			"Events",
-			hist.Cat("dataset","Dataset"),
-			hist.Bin("mass", "Z mass", 60, 60, 120)
-		)
+		
+		self._accumulator = processor.dict_accumulator({
+
+			"sumw": processor.defaultdict_accumulator(float),
+			"mass": hist.Hist(
+				"Events",
+				hist.Cat("dataset","Dataset"),
+				hist.Bin("mass","$m_{e+e-}$ [GeV]", 100, 0, 200),
+			),
+			"nElectrons":hist.Hist(
+				"Events",
+				hist.Cat("dataset","Dataset"),
+				hist.Bin("nElectrons","# of Electrons",10,0,10)
+			)
+		})
+		
 	# -- Accumulator: accumulate histograms
 	@property
 	def accumulator(self):
-		return self._histo
+		return self._accumulator
 
 	# -- Main function : Process events
 	def process(self, events):
 
 		# Initialize accumulator
 		out = self.accumulator.identity()
+		dataset = events.metadata['dataset']
 
 		# Event selection: opposite charged same flavor
-
 		Electron = events.Electron
 		Electron_mask = (Electron.pt >20) & (np.abs(Electron.eta) < 2.5) & (Electron.cutBased > 1) 
 		Ele_channel_mask = ak.num(Electron[Electron_mask]) > 1
 		Ele_channel_events = events[Ele_channel_mask]
 		Ele = Ele_channel_events.Electron
+		
 
 		# All possible pairs of Electron in each event
 		ele_pairs = ak.combinations(Ele,2,axis=1)
@@ -72,12 +84,19 @@ class MyZPeak(processor.ProcessorABC):
 		#Mee = ak.flatten(leading_diffsign_diele.mass) # This makes type error ( primitive expected but ?float given )
 		Mee = ak.to_numpy(leading_diffsign_diele.mass)
 		Mee = Mee.flatten()
+	
 
-
-		out.fill(
-			dataset = events.metadata["dataset"],
-			mass = Mee
+		out["sumw"][dataset] += len(events)
+		out["nElectrons"].fill(
+			dataset=dataset,
+			#nElectrons= ak.to_numpy(ak.num(Ele))
+			nElectrons= ak.num(Ele)
 		)
+		out["mass"].fill(
+			dataset=dataset,
+			mass=Mee
+		)
+
 
 		return out
 
@@ -111,15 +130,10 @@ result = processor.run_uproot_job(
 	MyZPeak(), # Class
 	executor=processor.futures_executor,
 	executor_args={"schema": NanoAODSchema, "workers": N_node},
-	#executor_args={'nano':True, "workers": N_node},
 	#maxchunks=4,
 )
 
 
-# Draw hist -- If you want to drwa hist
-#import matplotlib.pyplot as plt
-#hist.plot1d(result)
-#plt.savefig("Zmumu.png")
 
 
 outname = data_sample + '.futures'
