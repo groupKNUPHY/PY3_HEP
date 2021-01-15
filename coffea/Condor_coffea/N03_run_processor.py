@@ -41,6 +41,11 @@ class MyZPeak(processor.ProcessorABC):
 				hist.Cat("dataset","Dataset"),
 				hist.Bin("mass","$m_{e+e-}$ [GeV]", 100, 0, 200),
 			),
+			"mass_60_120": hist.Hist(
+				"Events",
+				hist.Cat("dataset","Dataset"),
+				hist.Bin("mass_60_120","$m_{e+e-}$ [GeV]", 60, 60, 120),
+			),
 			"nElectrons":hist.Hist(
 				"Events",
 				hist.Cat("dataset","Dataset"),
@@ -80,11 +85,19 @@ class MyZPeak(processor.ProcessorABC):
 		
 		leading_diffsign_diele = diffsign_diele[ak.argmax(diffsign_diele.pt,axis=1,keepdims=True)]
 
+		Zmass_mask = leading_diffsign_diele.mass >= 60 and leading_diffsign_diele.mass <= 120
 		
 		#Mee = ak.flatten(leading_diffsign_diele.mass) # This makes type error ( primitive expected but ?float given )
-		Mee = ak.to_numpy(leading_diffsign_diele.mass)
-		Mee = Mee.flatten()
+		
+		Mee = leading_diffsign_diele.mass
+
+		Mee_60_120 = Mee[Zmass_mask]
+		Mee_60_120 = ak.to_numpy(ak.flatten(Mee_60_120))
+		
+		Mee = ak.to_numpy(Mee).flatten()
 	
+
+
 
 		out["sumw"][dataset] += len(events)
 		out["nElectrons"].fill(
@@ -95,6 +108,10 @@ class MyZPeak(processor.ProcessorABC):
 		out["mass"].fill(
 			dataset=dataset,
 			mass=Mee
+		)
+		out["mass_60_120"].fill(
+			dataset=dataset,
+			mass_60_120=Mee_60_120
 		)
 
 
