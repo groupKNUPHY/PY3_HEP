@@ -114,12 +114,16 @@ metadata = args.metadata
 data_sample = args.dataset
 
 
+
 with open(metadata) as fin:
 	datadict = json.load(fin)
 
 filelist = glob.glob(datadict[data_sample])
+
+
+sample_name = data_sample.split('_')[0]
 samples = {
-	"WZ" : filelist
+	sample_name : filelist
 }
 
 

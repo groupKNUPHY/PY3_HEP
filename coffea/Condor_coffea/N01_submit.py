@@ -1,8 +1,15 @@
 import os
 import json
+import argparse
+
+parser = argparse.ArgumentParser()
+
+parser.add_argument('json', type=str,
+            help="python N01.submit.py PATH/TO/File.json")
+args = parser.parse_args()
 
 
-metadata="metadata/mclist.json"
+metadata=args.json
 
 
 with open(metadata) as fin:
