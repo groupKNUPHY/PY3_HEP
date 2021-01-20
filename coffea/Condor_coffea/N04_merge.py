@@ -45,15 +45,15 @@ def reduce(folder,sample_list):
 		if filename.split('_')[0] not in sample_list:
 			continue;
 
-		#print("Gen Entries of {0}: {1}".format(filename.split('.')[0],hists[filename]['sumw']['WZ']))
-		#print("Selected Entries of {0}: {1}".format(filename.split('.')[0],np.sum(hists[filename]['mass'][()])))
 		
-		
-		hsum_Mee.add(hists[filename]['mass'])
+		#hsum_Mee.add(hists[filename]['mass'])
 		hsum_Mee_60_120.add(hists[filename]['mass_60_120'])
 		hsum_nElectrons.add(hists[filename]['nElectrons'])
+		
+		#hsum_Mee.add(hists[filename])
+		#hsum_Mee_60_120.add(hists[filename])
+		#hsum_nElectrons.add(hists[filename])
 
-	print("Selected Entries of sum hist: ",np.sum(hsum_Mee.sum('dataset').values()[()]))
 
 	return hsum_Mee_60_120,hsum_nElectrons
 	
@@ -71,11 +71,16 @@ if __name__ == '__main__':
 
 	h1_Mee, h1_nElectrons  = reduce("condorOut",sample_list)
 
+
+	print("######## Loaded hist ############" )
+	print(h1_Mee)
+
 	## Noramlize	
 	scales={
 		'DY' : weightDY
 	}
 	h1_Mee.scale(scales,axis='dataset')
+
 
 	elapsed_time = time.time() - start
 	print("Time: ",elapsed_time)
@@ -108,24 +113,23 @@ if __name__ == '__main__':
 	ax.set_prop_cycle(cycler(color=colors))
 	
 	fill_opts = {
-#	    'edgecolor': (0,0,0,0.3),
+	    'edgecolor': (0,0,0,0.3),
 	    'alpha': 0.8
 	}
 	error_opts = {
 	    'label': 'Stat. Unc.',
 	    'hatch': '///',
 	    'facecolor': 'none',
-#	    'edgecolor': (0,0,0,.5),
+	    'edgecolor': (0,0,0,.5),
 	    'linewidth': 0
 	}
 	data_err_opts = {
 	    'linestyle': 'none',
 	    'marker': '.',
-	    'markersize': 10.,
+	    'markersize': 4.,
 	    'color': 'k',
 	}
 
-	
 	# MC plotting
 	hist.plot1d(
 
@@ -133,7 +137,7 @@ if __name__ == '__main__':
 		ax=ax,
 		clear=False,
 		stack=True,
-		line_opts=fill_opts,
+		fill_opts=fill_opts,
 		error_opts = error_opts
 	)
 
@@ -145,6 +149,7 @@ if __name__ == '__main__':
 		clear=False,
 		error_opts=data_err_opts
 	)
+
 
 
 	# Ratio Plot
@@ -172,30 +177,5 @@ if __name__ == '__main__':
 
 	plt.savefig("Mee.png")	
 
-
-
-
-'''
-stack_fill_opts = {
-	'alpha': 0.5,
-	'edgecolor':(0,0,0,.5)
-}
-
-hist.plot1d(
-	h1_Mee,
-	fill_opts=stack_fill_opts,
-)
-plt.savefig("Mee.png")
-
-plt.close()
-hist.plot1d(
-	h1_nElectrons,
-	fill_opts=stack_fill_opts,
-)
-plt.savefig("nElectrons.png")
-'''	
-
-
-	
 
 
