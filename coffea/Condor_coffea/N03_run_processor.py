@@ -9,7 +9,10 @@ import glob
 import os
 import argparse
 import numpy as np
+from coffea import lumi_tools
+
 start = time.time()
+
 
 
 
@@ -65,8 +68,16 @@ class MyZPeak(processor.ProcessorABC):
 		out = self.accumulator.identity()
 		dataset = events.metadata['dataset']
 
-		# Event selection: opposite charged same flavor
+		# Lumi section
+		print("############## Start ... Matching Golden Json files ##############")
+		Golden_json = "Cert_314472-325175_13TeV_Legacy2018_Collisions18_JSON.txt"
+		print(lumi_tools.LumiMask(Golden_json)(events['run'],events['luminosityBlock']))
+		
+
+
+		# Electron selection
 		Electron = events.Electron
+			# CutBased ID -->   0:fail, 1:veto, 2:loose, 3:medium, 4:tight
 		Electron_mask = (Electron.pt >20) & (np.abs(Electron.eta) < 2.5) & (Electron.cutBased > 1) 
 		Ele_channel_mask = ak.num(Electron[Electron_mask]) > 1
 		Ele_channel_events = events[Ele_channel_mask]
@@ -80,24 +91,22 @@ class MyZPeak(processor.ProcessorABC):
 		ele_left, ele_right = ak.unzip(ele_pairs)
 		diele = ele_left + ele_right
 		
-		
+		# Opposite sign		
 		diffsign_diele =  diele[diele.charge==0]
-		
+
+		# Leading pair (Highest PT parir)
 		leading_diffsign_diele = diffsign_diele[ak.argmax(diffsign_diele.pt,axis=1,keepdims=True)]
 
+		# Z mass window for h1_Mee_60_120 histo
 		Zmass_mask = leading_diffsign_diele.mass >= 60 and leading_diffsign_diele.mass <= 120
 		
 		#Mee = ak.flatten(leading_diffsign_diele.mass) # This makes type error ( primitive expected but ?float given )
 		
 		Mee = leading_diffsign_diele.mass
-
 		Mee_60_120 = Mee[Zmass_mask]
 		Mee_60_120 = ak.to_numpy(ak.flatten(Mee_60_120))
-		
 		Mee = ak.to_numpy(Mee).flatten()
 	
-
-
 
 		out["sumw"][dataset] += len(events)
 		out["nElectrons"].fill(
@@ -164,6 +173,7 @@ save(result,outname)
 elapsed_time = time.time() - start
 print("Time: ",elapsed_time)
 ## <-------------------------
+
 
 
 
