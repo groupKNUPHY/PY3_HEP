@@ -33,6 +33,41 @@ args = parser.parse_args()
 # ---> Class MuZPeak
 class MyZPeak(processor.ProcessorABC):
 
+
+	doubleelectron_triggers  ={
+	'2018': [
+	#		"HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ",
+	#		"HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL",
+			"HLT_DiEle27_WPTightCaloOnly_L1DoubleEG",
+	#		"HLT_DoubleEle33_CaloIdL_MW",
+	#		"HLT_DoubleEle25_CaloIdL_MW"
+	#		"HLT_DoubleEle27_CaloIdL_MW",
+	#		"HLT_DoublePhoton70"
+			]
+	}
+
+
+
+	singleelectron_triggers = { #2017 and 2018 from monojet, applying dedicated trigger weights
+			'2016': [
+				'Ele27_WPTight_Gsf',
+				'Ele105_CaloIdVT_GsfTrkIdT'
+			],
+			'2017': [
+				'Ele35_WPTight_Gsf',
+				'Ele115_CaloIdVT_GsfTrkIdT',
+				'Photon200'
+			],
+			'2018': [
+				'Ele32_WPTight_Gsf',   # Isolated
+				#'Ele115_CaloIdVT_GsfTrkIdT',  # Non-Isolated
+				#'Photon200' # high PT
+			]
+		}
+
+
+
+
 	# -- Initializer
 	def __init__(self):
 		
@@ -69,11 +104,45 @@ class MyZPeak(processor.ProcessorABC):
 		dataset = events.metadata['dataset']
 
 		# Lumi section
-		print("############## Start ... Matching Golden Json files ##############")
-		Golden_json = "Cert_314472-325175_13TeV_Legacy2018_Collisions18_JSON.txt"
-		print(lumi_tools.LumiMask(Golden_json)(events['run'],events['luminosityBlock']))
+		#print("############## Start ... Matching Golden Json files ##############")
+		#Golden_json = "Cert_314472-325175_13TeV_Legacy2018_Collisions18_JSON.txt"
+		#print(lumi_tools.LumiMask(Golden_json)(events['run'],events['luminosityBlock']))
 		
 
+		## double lepton trigger
+		# ---- Not applied yet-------------------------------#
+		is_double_ele_trigger=False
+		if not is_double_ele_trigger:
+			double_ele_triggers_arr=np.ones(events.size, dtype=np.bool)
+		else:
+			double_ele_triggers_arr = np.zeros(events.size, dtype=np.bool)
+			for path in doubleelectron_triggers[year]:
+				if path not in events.HLT.columns: continue
+				double_ele_triggers_arr = double_ele_triggers_arr | events.HLT[path]
+		print("Double Electron triggers")
+		print(double_ele_triggers_arr,double_ele_triggers_arr.shape)
+
+
+		## single lepton trigger
+		# ---- Not applied yet-------------------------------#
+		is_single_ele_trigger=False
+		if not is_single_ele_trigger:
+			single_ele_triggers_arr=np.ones(events.size, dtype=np.bool)
+		else:
+			single_ele_triggers_arr = np.zeros(events.size, dtype=np.bool)
+			for path in singleelectron_triggers[year]:
+				if path not in events.HLT.columns: continue
+				single_ele_triggers_arr = single_ele_triggers_arr | events.HLT[path]
+		print("Single Electron triggers")
+		print(single_ele_triggers_arr,single_ele_triggers_arr.shape)
+
+
+		
+		Initial_events = events
+		print("{0} number of events are detected".format(Initial_events.shape[0]))
+		events = events[single_ele_triggers_arr | double_ele_triggers_arr]
+		print("Total {0} number of events are remain after triggger | Eff: {1}".format(events.shape[0], events.shape[0] / Initial_events.shape[0] * 100))
+		
 
 		# Electron selection
 		Electron = events.Electron
