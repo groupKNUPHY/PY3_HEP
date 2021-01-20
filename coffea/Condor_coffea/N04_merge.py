@@ -38,6 +38,9 @@ def reduce(folder,sample_list):
 
 
 	hists={}
+	sumw_DY=0
+	sumw_Egamma=0
+	
 	for filename in os.listdir(folder):
 		hin = load(folder + '/' + filename)
 		hists[filename] = hin.copy()
@@ -45,7 +48,8 @@ def reduce(folder,sample_list):
 		if filename.split('_')[0] not in sample_list:
 			continue;
 
-		
+		sumw_DY += hists[filename]['sumw']['DY']
+		sumw_Egamma += hists[filename]['sumw']['Egamma']
 		#hsum_Mee.add(hists[filename]['mass'])
 		hsum_Mee_60_120.add(hists[filename]['mass_60_120'])
 		hsum_nElectrons.add(hists[filename]['nElectrons'])
@@ -55,6 +59,11 @@ def reduce(folder,sample_list):
 		#hsum_nElectrons.add(hists[filename])
 
 
+
+
+
+	print("Passing Trigger DY: ",sumw_DY * lumi * xsecDY / GenDY  )
+	print("Passing Trigger Egamma: ",sumw_Egamma)
 	return hsum_Mee_60_120,hsum_nElectrons
 	
 
@@ -69,17 +78,17 @@ if __name__ == '__main__':
 	#sample_list = ['WZ','DY','Egamma']
 	sample_list = ['DY','Egamma']
 
-	h1_Mee, h1_nElectrons  = reduce("condorOut",sample_list)
+	h1_Mee, h1_nElectrons  = reduce("condorOut_non_trigger",sample_list)
 
 
 	print("######## Loaded hist ############" )
-	print(h1_Mee)
 
 	## Noramlize	
 	scales={
 		'DY' : weightDY
 	}
 	h1_Mee.scale(scales,axis='dataset')
+	h1_nElectrons.scale(scales,axis='dataset')
 
 
 	elapsed_time = time.time() - start
@@ -90,7 +99,7 @@ if __name__ == '__main__':
 
 # ----> Plotting 
 	print("End processing.. make plot")
-
+	print(" ")
 	# make a nice ratio plot, adjusting some font sizes
 	plt.rcParams.update({
 	    'font.size': 14,
@@ -150,6 +159,21 @@ if __name__ == '__main__':
 		error_opts=data_err_opts
 	)
 
+	print("### pass ele channel? ###")
+	DY_pass_ele = h1_nElectrons['DY'].sum('dataset').values()[()]
+	Egamma_pass_ele = h1_nElectrons['Egamma'].sum('dataset').values()[()]
+	print("DY pass ele channel : ",np.sum(DY_pass_ele))
+	print("Egamma pass ele channel: ",np.sum(Egamma_pass_ele))
+
+
+	print("  " )
+
+
+	print("### pass mass window? ###")
+	DY_pass_masswindow = h1_Mee['DY'].sum('dataset').values()[()]
+	Egamma_pass_masswindow = h1_Mee['Egamma'].sum('dataset').values()[()]
+	print("DY pass mass window: ",np.sum(DY_pass_masswindow))
+	print("Egamma pass mass window: ",np.sum(Egamma_pass_masswindow))
 
 
 	# Ratio Plot
@@ -176,6 +200,3 @@ if __name__ == '__main__':
 	leg = ax.legend()
 
 	plt.savefig("Mee.png")	
-
-
-

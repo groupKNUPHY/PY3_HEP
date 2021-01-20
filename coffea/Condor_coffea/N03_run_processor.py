@@ -1,5 +1,4 @@
 import awkward1 as ak
-from coffea.nanoaod import NanoEvents
 from coffea.nanoevents import NanoEventsFactory, NanoAODSchema
 import time
 from coffea import processor, hist
@@ -34,42 +33,44 @@ args = parser.parse_args()
 class MyZPeak(processor.ProcessorABC):
 
 
-	doubleelectron_triggers  ={
-	'2018': [
-	#		"HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ",
-	#		"HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL",
-			"HLT_DiEle27_WPTightCaloOnly_L1DoubleEG",
-	#		"HLT_DoubleEle33_CaloIdL_MW",
-	#		"HLT_DoubleEle25_CaloIdL_MW"
-	#		"HLT_DoubleEle27_CaloIdL_MW",
-	#		"HLT_DoublePhoton70"
-			]
-	}
-
-
-
-	singleelectron_triggers = { #2017 and 2018 from monojet, applying dedicated trigger weights
-			'2016': [
-				'Ele27_WPTight_Gsf',
-				'Ele105_CaloIdVT_GsfTrkIdT'
-			],
-			'2017': [
-				'Ele35_WPTight_Gsf',
-				'Ele115_CaloIdVT_GsfTrkIdT',
-				'Photon200'
-			],
-			'2018': [
-				'Ele32_WPTight_Gsf',   # Isolated
-				#'Ele115_CaloIdVT_GsfTrkIdT',  # Non-Isolated
-				#'Photon200' # high PT
-			]
-		}
 
 
 
 
 	# -- Initializer
 	def __init__(self):
+
+
+		self._year = '2018'
+
+		self._doubleelectron_triggers  ={
+			'2018': [
+			#		"HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ",
+					"HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL", # Recomended
+			#		"HLT_DiEle27_WPTightCaloOnly_L1DoubleEG",
+			#		"HLT_DoubleEle33_CaloIdL_MW",
+			#		"HLT_DoubleEle25_CaloIdL_MW"
+			#		"HLT_DoubleEle27_CaloIdL_MW",
+			#		"HLT_DoublePhoton70"
+					]
+		}
+	
+	
+	
+		self._singleelectron_triggers = { #2017 and 2018 from monojet, applying dedicated trigger weights
+				'2016': [
+					'Ele27_WPTight_Gsf',
+					'Ele105_CaloIdVT_GsfTrkIdT'
+				],
+				'2017': [
+					'Ele35_WPTight_Gsf',
+					'Ele115_CaloIdVT_GsfTrkIdT',
+					'Photon200'
+				],
+				'2018': [
+					'Ele32_WPTight_Gsf',   # Recomended
+				]
+			}
 		
 		self._accumulator = processor.dict_accumulator({
 
@@ -111,37 +112,37 @@ class MyZPeak(processor.ProcessorABC):
 
 		## double lepton trigger
 		# ---- Not applied yet-------------------------------#
-		is_double_ele_trigger=False
+		is_double_ele_trigger=True
 		if not is_double_ele_trigger:
-			double_ele_triggers_arr=np.ones(events.size, dtype=np.bool)
+			double_ele_triggers_arr=np.ones(len(events), dtype=np.bool)
 		else:
-			double_ele_triggers_arr = np.zeros(events.size, dtype=np.bool)
-			for path in doubleelectron_triggers[year]:
-				if path not in events.HLT.columns: continue
+			double_ele_triggers_arr = np.zeros(len(events), dtype=np.bool)
+			for path in self._doubleelectron_triggers[self._year]:
+				if path not in events.HLT.fields: continue
 				double_ele_triggers_arr = double_ele_triggers_arr | events.HLT[path]
 		print("Double Electron triggers")
-		print(double_ele_triggers_arr,double_ele_triggers_arr.shape)
+		print(double_ele_triggers_arr,len(double_ele_triggers_arr))
 
 
 		## single lepton trigger
 		# ---- Not applied yet-------------------------------#
-		is_single_ele_trigger=False
+		is_single_ele_trigger=True
 		if not is_single_ele_trigger:
-			single_ele_triggers_arr=np.ones(events.size, dtype=np.bool)
+			single_ele_triggers_arr=np.ones(len(events), dtype=np.bool)
 		else:
-			single_ele_triggers_arr = np.zeros(events.size, dtype=np.bool)
-			for path in singleelectron_triggers[year]:
-				if path not in events.HLT.columns: continue
+			single_ele_triggers_arr = np.zeros(len(events), dtype=np.bool)
+			for path in self._singleelectron_triggers[self._year]:
+				if path not in events.HLT.fields: continue
 				single_ele_triggers_arr = single_ele_triggers_arr | events.HLT[path]
 		print("Single Electron triggers")
-		print(single_ele_triggers_arr,single_ele_triggers_arr.shape)
+		print(single_ele_triggers_arr,len(single_ele_triggers_arr))
 
 
 		
 		Initial_events = events
-		print("{0} number of events are detected".format(Initial_events.shape[0]))
+		print("{0} number of events are detected".format(len(Initial_events)))
 		events = events[single_ele_triggers_arr | double_ele_triggers_arr]
-		print("Total {0} number of events are remain after triggger | Eff: {1}".format(events.shape[0], events.shape[0] / Initial_events.shape[0] * 100))
+		print("Total {0} number of events are remain after triggger | Eff: {1}".format(len(events), len(events) / len(Initial_events) * 100))
 		
 
 		# Electron selection
