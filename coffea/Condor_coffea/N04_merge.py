@@ -19,6 +19,11 @@ def reduce(folder,sample_list):
 	variables = []
 	print(os.listdir(folder))
 
+	hsum_charge= hist.Hist(
+		   "Events",
+		   hist.Cat("dataset","Dataset"),
+		   hist.Bin("charge","charge sum of electrons", 4, -2, 2),
+	)
 
 	hsum_Mee = hist.Hist(
 		"Events",
@@ -30,11 +35,93 @@ def reduce(folder,sample_list):
 		hist.Cat("dataset","Dataset"),
 		hist.Bin("mass_60_120","Z mass",60,60,120)	
 	)
-	hsum_nElectrons = hist.Hist(
+	hsum_ele1pt = hist.Hist(
 		"Events",
 		hist.Cat("dataset","Dataset"),
-		hist.Bin("nElectrons","# of Electrons",10,0,10)
+		hist.Bin("ele1pt","Leading Electron $P_{T}$ [GeV]",100,0,200)	
 	)
+	hsum_ele2pt =  hist.Hist(
+		"Events",
+		hist.Cat("dataset","Dataset"),
+		hist.Bin("ele2pt","Subleading $Electron P_{T}$ [GeV]", 100, 0, 200),
+	)
+	
+	hsum_ele1eta= hist.Hist(
+		"Events",
+		hist.Cat("dataset","Dataset"),
+		hist.Bin("ele1eta","Leading Electron $\eta$ [GeV]", 6, -3, 3),
+	)
+	
+	hsum_ele2eta =  hist.Hist(
+		"Events",
+		hist.Cat("dataset","Dataset"),
+		hist.Bin("ele2eta","Subleading Electron $\eta$ [GeV]", 6, -3, 3),
+	)
+	hsum_ele1phi =  hist.Hist(
+		"Events",
+		hist.Cat("dataset","Dataset"),
+		hist.Bin("ele1phi","Leading Electron $\phi$ [GeV]", 8, -3.15, 3.15),
+	)
+	
+	hsum_ele2phi =  hist.Hist(
+		"Events",
+		hist.Cat("dataset","Dataset"),
+		hist.Bin("ele2phi","Subleading Electron $\phi$ [GeV]", 8, -3.15, 3.15),
+	)
+
+	hsum_os_Mee =  hist.Hist(
+		"Events",
+		hist.Cat("dataset","Dataset"),
+		hist.Bin("os_mass","$m_{e+e-}$ [GeV]", 100, 0, 200),
+	)
+	hsum_os_Mee_60_120 = hist.Hist(
+		"Events",
+		hist.Cat("dataset","Dataset"),
+		hist.Bin("os_mass_60_120","$m_{e+e-}$ [GeV]", 60, 60, 120),
+	)
+	hsum_os_ele1pt =  hist.Hist(
+		"Events",
+		hist.Cat("dataset","Dataset"),
+		hist.Bin("os_ele1pt","Leading Electron $P_{T}$ [GeV]", 100, 0, 200),
+	)
+	
+	hsum_os_ele2pt= hist.Hist(
+		"Events",
+		hist.Cat("dataset","Dataset"),
+		hist.Bin("os_ele2pt","Subleading $Electron P_{T}$ [GeV]", 100, 0, 200),
+	)
+	hsum_os_ele1eta =  hist.Hist(
+		"Events",
+		hist.Cat("dataset","Dataset"),
+		hist.Bin("os_ele1eta","Leading Electron $\eta$ [GeV]", 6, -3, 3),
+	)
+	
+	hsum_os_ele2eta =  hist.Hist(
+		"Events",
+		hist.Cat("dataset","Dataset"),
+		hist.Bin("os_ele2eta","Subleading Electron $\eta$ [GeV]", 6, -3, 3),
+	)
+	hsum_os_ele1phi =  hist.Hist(
+		"Events",
+		hist.Cat("dataset","Dataset"),
+		hist.Bin("os_ele1phi","Leading Electron $\phi$ [GeV]", 8, -3.15, 3.15),
+	)
+	
+	hsum_os_ele2phi =  hist.Hist(
+		"Events",
+		hist.Cat("dataset","Dataset"),
+		hist.Bin("os_ele2phi","Subleading Electron $\phi$ [GeV]", 8, -3.15, 3.15),
+	)
+	hsum_nElectrons = hist.Hist(
+        "Events",
+        hist.Cat("dataset","Dataset"),
+        hist.Bin("nElectrons","# of Electrons",10,0,10)
+    )
+
+
+    
+
+
 
 
 	hists={}
@@ -50,13 +137,28 @@ def reduce(folder,sample_list):
 
 		sumw_DY += hists[filename]['sumw']['DY']
 		sumw_Egamma += hists[filename]['sumw']['Egamma']
-		#hsum_Mee.add(hists[filename]['mass'])
-		hsum_Mee_60_120.add(hists[filename]['mass_60_120'])
-		hsum_nElectrons.add(hists[filename]['nElectrons'])
+
+
+		hsum_charge.add(hists[filename]['charge'])
+		#hsum_nElectrons.add(hists[filename]['nElectrons'])
 		
-		#hsum_Mee.add(hists[filename])
-		#hsum_Mee_60_120.add(hists[filename])
-		#hsum_nElectrons.add(hists[filename])
+		hsum_Mee.add(hists[filename]['mass'])
+		#hsum_Mee_60_120.add(hists[filename]['mass_60_120'])
+		#hsum_ele1pt.add(hists[filename]['ele1pt'])
+		#hsum_ele2pt.add(hists[filename]['ele2pt'])
+		#hsum_ele1eta.add(hists[filename]['ele1eta'])
+		#hsum_ele2eta.add(hists[filename]['ele2eta'])
+		#hsum_ele1phi.add(hists[filename]['ele1phi'])
+		#hsum_ele2phi.add(hists[filename]['ele2phi'])
+		
+		#hsum_os_Mee.add(hists[filename]['os_mass'])
+		#hsum_os_Mee_60_120.add(hists[filename]['os_mass_60_120'])
+		#hsum_os_ele1pt.add(hists[filename]['os_ele1pt'])
+		#hsum_os_ele2pt.add(hists[filename]['os_ele2pt'])
+		#hsum_os_ele1eta.add(hists[filename]['os_ele1eta'])
+		#hsum_os_ele2eta.add(hists[filename]['os_ele2eta'])
+		#hsum_os_ele1phi.add(hists[filename]['os_ele1phi'])
+		hsum_os_ele2phi.add(hists[filename]['os_ele2phi'])
 
 
 
@@ -64,7 +166,7 @@ def reduce(folder,sample_list):
 
 	print("Passing Trigger DY: ",sumw_DY * lumi * xsecDY / GenDY  )
 	print("Passing Trigger Egamma: ",sumw_Egamma)
-	return hsum_Mee_60_120,hsum_nElectrons
+	return hsum_Mee,hsum_os_ele2phi
 	
 
 
@@ -78,7 +180,8 @@ if __name__ == '__main__':
 	#sample_list = ['WZ','DY','Egamma']
 	sample_list = ['DY','Egamma']
 
-	h1_Mee, h1_nElectrons  = reduce("condorOut_non_trigger",sample_list)
+	#h1_Mee, h1_nElectrons  = reduce("condorOut_non_trigger",sample_list)
+	h1, h1_os  = reduce("condorOut_v1",sample_list)
 
 
 	print("######## Loaded hist ############" )
@@ -87,8 +190,8 @@ if __name__ == '__main__':
 	scales={
 		'DY' : weightDY
 	}
-	h1_Mee.scale(scales,axis='dataset')
-	h1_nElectrons.scale(scales,axis='dataset')
+	h1.scale(scales,axis='dataset')
+	h1_os.scale(scales,axis='dataset')
 
 
 	elapsed_time = time.time() - start
@@ -102,18 +205,18 @@ if __name__ == '__main__':
 	print(" ")
 	# make a nice ratio plot, adjusting some font sizes
 	plt.rcParams.update({
-	    'font.size': 14,
-	    'axes.titlesize': 18,
-	    'axes.labelsize': 18,
-	    'xtick.labelsize': 12,
-	    'ytick.labelsize': 12
+		'font.size': 14,
+		'axes.titlesize': 18,
+		'axes.labelsize': 18,
+		'xtick.labelsize': 12,
+		'ytick.labelsize': 12
 	})
 	fig, (ax, rax) = plt.subplots(
-	    nrows=2,
-	    ncols=1,
-	    figsize=(7,7),
-	    gridspec_kw={"height_ratios": (3, 1)},
-	    sharex=True
+		nrows=2,
+		ncols=1,
+		figsize=(7,7),
+		gridspec_kw={"height_ratios": (3, 1)},
+		sharex=True
 	)
 	fig.subplots_adjust(hspace=.07)
 
@@ -122,27 +225,27 @@ if __name__ == '__main__':
 	ax.set_prop_cycle(cycler(color=colors))
 	
 	fill_opts = {
-	    'edgecolor': (0,0,0,0.3),
-	    'alpha': 0.8
+		'edgecolor': (0,0,0,0.3),
+		'alpha': 0.8
 	}
 	error_opts = {
-	    'label': 'Stat. Unc.',
-	    'hatch': '///',
-	    'facecolor': 'none',
-	    'edgecolor': (0,0,0,.5),
-	    'linewidth': 0
+		'label': 'Stat. Unc.',
+		'hatch': '///',
+		'facecolor': 'none',
+		'edgecolor': (0,0,0,.5),
+		'linewidth': 0
 	}
 	data_err_opts = {
-	    'linestyle': 'none',
-	    'marker': '.',
-	    'markersize': 4.,
-	    'color': 'k',
+		'linestyle': 'none',
+		'marker': '.',
+		'markersize': 4.,
+		'color': 'k',
 	}
 
 	# MC plotting
 	hist.plot1d(
 
-		h1_Mee['DY'],
+		h1_os['DY'],
 		ax=ax,
 		clear=False,
 		stack=True,
@@ -153,38 +256,42 @@ if __name__ == '__main__':
 	# DATA plotting
 	hist.plot1d(
 	
-		h1_Mee['Egamma'],
+		h1_os['Egamma'],
 		ax=ax,
 		clear=False,
 		error_opts=data_err_opts
 	)
 
 	print("### pass ele channel? ###")
-	DY_pass_ele = h1_nElectrons['DY'].sum('dataset').values()[()]
-	Egamma_pass_ele = h1_nElectrons['Egamma'].sum('dataset').values()[()]
+	DY_pass_ele = h1['DY'].sum('dataset').values()[()]
+	Egamma_pass_ele = h1['Egamma'].sum('dataset').values()[()]
 	print("DY pass ele channel : ",np.sum(DY_pass_ele))
 	print("Egamma pass ele channel: ",np.sum(Egamma_pass_ele))
-
-
 	print("  " )
 
+	print("### pass OS ?  ###")
+	DY_pass_ele = h1_os['DY'].sum('dataset').values()[()]
+	Egamma_pass_ele = h1_os['Egamma'].sum('dataset').values()[()]
+	print("DY pass ele channel : ",np.sum(DY_pass_ele))
+	print("Egamma pass ele channel: ",np.sum(Egamma_pass_ele))
+	print("  " )
 
 	print("### pass mass window? ###")
-	DY_pass_masswindow = h1_Mee['DY'].sum('dataset').values()[()]
-	Egamma_pass_masswindow = h1_Mee['Egamma'].sum('dataset').values()[()]
+	DY_pass_masswindow = h1['DY'].sum('dataset').values()[()]
+	Egamma_pass_masswindow = h1['Egamma'].sum('dataset').values()[()]
 	print("DY pass mass window: ",np.sum(DY_pass_masswindow))
 	print("Egamma pass mass window: ",np.sum(Egamma_pass_masswindow))
 
 
 	# Ratio Plot
 	hist.plotratio(
-	    num=h1_Mee['Egamma'].sum("dataset"),
-	    denom=h1_Mee['DY'].sum("dataset"),
-	    ax=rax,
-	    error_opts=data_err_opts,
-	    denom_fill_opts={},
-	    guide_opts={},
-	    unc='num'
+		num=h1_os['Egamma'].sum("dataset"),
+		denom=h1_os['DY'].sum("dataset"),
+		ax=rax,
+		error_opts=data_err_opts,
+		denom_fill_opts={},
+		guide_opts={},
+		unc='num'
 	)
 
 
@@ -199,4 +306,4 @@ if __name__ == '__main__':
 	ax.set_yscale('log')
 	leg = ax.legend()
 
-	plt.savefig("Mee.png")	
+	plt.savefig("Ele2Phi.png")	

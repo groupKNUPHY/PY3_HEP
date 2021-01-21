@@ -75,16 +75,109 @@ class MyZPeak(processor.ProcessorABC):
 		self._accumulator = processor.dict_accumulator({
 
 			"sumw": processor.defaultdict_accumulator(float),
+
 			"mass": hist.Hist(
 				"Events",
 				hist.Cat("dataset","Dataset"),
 				hist.Bin("mass","$m_{e+e-}$ [GeV]", 100, 0, 200),
+			),
+			"charge": hist.Hist(
+				"Events",
+				hist.Cat("dataset","Dataset"),
+				hist.Bin("charge","charge sum of electrons", 6, -3, 3),
 			),
 			"mass_60_120": hist.Hist(
 				"Events",
 				hist.Cat("dataset","Dataset"),
 				hist.Bin("mass_60_120","$m_{e+e-}$ [GeV]", 60, 60, 120),
 			),
+			"ele1pt": hist.Hist(
+				"Events",
+				hist.Cat("dataset","Dataset"),
+				hist.Bin("ele1pt","Leading Electron $P_{T}$ [GeV]", 500, 0, 1000),
+			),
+
+			"ele2pt": hist.Hist(
+				"Events",
+				hist.Cat("dataset","Dataset"),
+				hist.Bin("ele2pt","Subleading $Electron P_{T}$ [GeV]", 500, 0, 1000),
+			),
+			"ele1eta": hist.Hist(
+				"Events",
+				hist.Cat("dataset","Dataset"),
+				hist.Bin("ele1eta","Leading Electron $\eta$ [GeV]", 20, -5, 5),
+			),
+
+			"ele2eta": hist.Hist(
+				"Events",
+				hist.Cat("dataset","Dataset"),
+				hist.Bin("ele2eta","Subleading Electron $\eta$ [GeV]", 20, -5, 5),
+			),
+			"ele1phi": hist.Hist(
+				"Events",
+				hist.Cat("dataset","Dataset"),
+				hist.Bin("ele1phi","Leading Electron $\phi$ [GeV]", 20, -3.15, 3.15),
+			),
+
+			"ele2phi": hist.Hist(
+				"Events",
+				hist.Cat("dataset","Dataset"),
+				hist.Bin("ele2phi","Subleading Electron $\phi$ [GeV]", 20, -3.15, 3.15),
+			),
+
+			"os_mass": hist.Hist(
+				"Events",
+				hist.Cat("dataset","Dataset"),
+				hist.Bin("os_mass","$m_{e+e-}$ [GeV]", 100, 0, 200),
+			),
+			"os_mass_60_120": hist.Hist(
+				"Events",
+				hist.Cat("dataset","Dataset"),
+				hist.Bin("os_mass_60_120","$m_{e+e-}$ [GeV]", 60, 60, 120),
+			),
+			"os_ele1pt": hist.Hist(
+				"Events",
+				hist.Cat("dataset","Dataset"),
+				hist.Bin("os_ele1pt","Leading Electron $P_{T}$ [GeV]", 500, 0, 1000),
+			),
+
+			"os_ele2pt": hist.Hist(
+				"Events",
+				hist.Cat("dataset","Dataset"),
+				hist.Bin("os_ele2pt","Subleading $Electron P_{T}$ [GeV]", 500, 0, 1000),
+			),
+			"os_ele1eta": hist.Hist(
+				"Events",
+				hist.Cat("dataset","Dataset"),
+				hist.Bin("os_ele1eta","Leading Electron $\eta$ [GeV]", 20, -5, 5),
+			),
+
+			"os_ele2eta": hist.Hist(
+				"Events",
+				hist.Cat("dataset","Dataset"),
+				hist.Bin("os_ele2eta","Subleading Electron $\eta$ [GeV]", 20, -5, 5),
+			),
+			"os_ele1phi": hist.Hist(
+				"Events",
+				hist.Cat("dataset","Dataset"),
+				hist.Bin("os_ele1phi","Leading Electron $\phi$ [GeV]", 20, -3.15, 3.15),
+			),
+
+			"os_ele2phi": hist.Hist(
+				"Events",
+				hist.Cat("dataset","Dataset"),
+				hist.Bin("os_ele2phi","Subleading Electron $\phi$ [GeV]", 20, -3.15, 3.15),
+			),
+
+
+
+
+
+
+
+
+
+
 			"nElectrons":hist.Hist(
 				"Events",
 				hist.Cat("dataset","Dataset"),
@@ -157,25 +250,84 @@ class MyZPeak(processor.ProcessorABC):
 		# All possible pairs of Electron in each event
 		ele_pairs = ak.combinations(Ele,2,axis=1)
 		
-		# TLorentz vector sum of ele_pairs
+		# Ele_pairs
 		ele_left, ele_right = ak.unzip(ele_pairs)
 		diele = ele_left + ele_right
-		
-		# Opposite sign		
-		diffsign_diele =  diele[diele.charge==0]
+			
+		# Opposite sign cut	
+		os_mask		 = diele.charge==0
+		os_diele	 = diele[os_mask]
+		os_ele_left  = ele_left[os_mask]
+		os_ele_right = ele_right[os_mask]
 
 		# Leading pair (Highest PT parir)
-		leading_diffsign_diele = diffsign_diele[ak.argmax(diffsign_diele.pt,axis=1,keepdims=True)]
+		def make_leading_pair(target,base):
+			return target[ak.argmax(base.pt,axis=1,keepdims=True)]
 
-		# Z mass window for h1_Mee_60_120 histo
-		Zmass_mask = leading_diffsign_diele.mass >= 60 and leading_diffsign_diele.mass <= 120
+		# Leading set
+		leading_diele	  = make_leading_pair(diele,diele)
+		leading_ele		  = make_leading_pair(ele_left,diele)
+		subleading_ele    = make_leading_pair(ele_right,diele)
+
+
+		# OS and Leading set
+		leading_os_diele  = make_leading_pair(os_diele,os_diele)
+		leading_os_ele    = make_leading_pair(os_ele_left,os_diele)
+		subleading_os_ele = make_leading_pair(os_ele_right,os_diele)
 		
-		#Mee = ak.flatten(leading_diffsign_diele.mass) # This makes type error ( primitive expected but ?float given )
 		
-		Mee = leading_diffsign_diele.mass
+
+		# Electron kinematics
+		def makeZmass_window_mask(dielecs,start=60,end=120):
+			mask = dielecs.mass >=start and dielecs.mass <=end
+			return mask
+
+		# flat dim for histo fill
+		def flat_dim(arr):
+			return ak.to_numpy(arr).flatten()
+
+
+		# Basic
+		ele1PT  = flat_dim(leading_ele.pt)
+		ele1Eta = flat_dim(leading_ele.eta)
+		ele1Phi = flat_dim(leading_ele.phi)
+		ele2PT  = flat_dim(subleading_ele.pt)
+		ele2Eta = flat_dim(subleading_ele.eta)
+		ele2Phi = flat_dim(subleading_ele.phi)
+		Mee     = leading_diele.mass
+		charge  = leading_diele.charge
+
+		Zmass_mask = makeZmass_window_mask(leading_diele)
 		Mee_60_120 = Mee[Zmass_mask]
 		Mee_60_120 = ak.to_numpy(ak.flatten(Mee_60_120))
 		Mee = ak.to_numpy(Mee).flatten()
+		charge = ak.to_numpy(charge).flatten()
+		
+		
+		# OS
+		os_ele1PT  = flat_dim(leading_os_ele.pt)
+		os_ele1Eta = flat_dim(leading_os_ele.eta)
+		os_ele1Phi = flat_dim(leading_os_ele.phi)
+		os_ele2PT  = flat_dim(subleading_os_ele.pt)
+		os_ele2Eta = flat_dim(subleading_os_ele.eta)
+		os_ele2Phi = flat_dim(subleading_os_ele.phi)
+		os_Mee = leading_os_diele.mass
+
+		os_Zmass_mask = makeZmass_window_mask(leading_os_diele)
+		os_Mee_60_120 = os_Mee[Zmass_mask]
+		os_Mee_60_120 = ak.to_numpy(ak.flatten(os_Mee_60_120))
+		os_Mee = ak.to_numpy(os_Mee).flatten()
+	
+
+
+
+
+
+	#	Zmass_mask = makeZmass_window_mask(leading_os_diele)	
+	#	Mee = leading_os_diele.mass
+	#	Mee_60_120 = Mee[Zmass_mask]
+	#	Mee_60_120 = ak.to_numpy(ak.flatten(Mee_60_120))
+	#	Mee = ak.to_numpy(Mee).flatten()
 	
 
 		out["sumw"][dataset] += len(events)
@@ -184,14 +336,78 @@ class MyZPeak(processor.ProcessorABC):
 			#nElectrons= ak.to_numpy(ak.num(Ele))
 			nElectrons= ak.num(Ele)
 		)
+
+
 		out["mass"].fill(
 			dataset=dataset,
 			mass=Mee
+		)
+		out["charge"].fill(
+			dataset=dataset,
+			charge=charge
 		)
 		out["mass_60_120"].fill(
 			dataset=dataset,
 			mass_60_120=Mee_60_120
 		)
+		out["ele1pt"].fill(
+			dataset=dataset,
+			ele1pt=ele1PT
+		)
+		out["ele1eta"].fill(
+			dataset=dataset,
+			ele1eta=ele1Eta
+		)
+		out["ele1phi"].fill(
+			dataset=dataset,
+			ele1phi=ele1Phi
+		)
+		out["ele2pt"].fill(
+			dataset=dataset,
+			ele2pt=ele2PT
+		)
+		out["ele2eta"].fill(
+			dataset=dataset,
+			ele2eta=ele2Eta
+		)
+		out["ele2phi"].fill(
+			dataset=dataset,
+			ele2phi=ele2Phi
+		)
+
+		out["os_mass"].fill(
+			dataset=dataset,
+			os_mass=os_Mee
+		)
+		out["os_mass_60_120"].fill(
+			dataset=dataset,
+			os_mass_60_120=os_Mee_60_120
+		)
+		out["os_ele1pt"].fill(
+			dataset=dataset,
+			os_ele1pt=os_ele1PT
+		)
+		out["os_ele1eta"].fill(
+			dataset=dataset,
+			os_ele1eta=os_ele1Eta
+		)
+		out["os_ele1phi"].fill(
+			dataset=dataset,
+			os_ele1phi=os_ele1Phi
+		)
+		out["os_ele2pt"].fill(
+			dataset=dataset,
+			os_ele2pt=os_ele2PT
+		)
+		out["os_ele2eta"].fill(
+			dataset=dataset,
+			os_ele2eta=os_ele2Eta
+		)
+		out["os_ele2phi"].fill(
+			dataset=dataset,
+			os_ele2phi=os_ele2Phi
+		)
+
 
 
 		return out
