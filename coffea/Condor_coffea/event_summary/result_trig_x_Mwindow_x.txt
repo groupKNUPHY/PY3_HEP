@@ -1,0 +1,18 @@
+DY yield:  45090700.0
+Data yield:  492835658
+
+
+
+Passing Trigger DY:  45090700.0
+Passing Trigger Egamma:  492835658.0
+######## Loaded hist ############
+Time:  0.004518985748291016
+End processing.. make plot
+ 
+### pass ele channel? ###
+DY pass ele channel :  13914734.437629296
+Egamma pass ele channel:  13155536.0
+  
+### pass mass window? ###
+DY pass mass window:  13748232.783719491
+Egamma pass mass window:  12831248.0
