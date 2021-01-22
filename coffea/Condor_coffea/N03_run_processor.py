@@ -32,11 +32,6 @@ args = parser.parse_args()
 # ---> Class MuZPeak
 class MyZPeak(processor.ProcessorABC):
 
-
-
-
-
-
 	# -- Initializer
 	def __init__(self):
 
@@ -86,21 +81,16 @@ class MyZPeak(processor.ProcessorABC):
 				hist.Cat("dataset","Dataset"),
 				hist.Bin("charge","charge sum of electrons", 6, -3, 3),
 			),
-			"mass_60_120": hist.Hist(
-				"Events",
-				hist.Cat("dataset","Dataset"),
-				hist.Bin("mass_60_120","$m_{e+e-}$ [GeV]", 60, 60, 120),
-			),
 			"ele1pt": hist.Hist(
 				"Events",
 				hist.Cat("dataset","Dataset"),
-				hist.Bin("ele1pt","Leading Electron $P_{T}$ [GeV]", 500, 0, 1000),
+				hist.Bin("ele1pt","Leading Electron $P_{T}$ [GeV]", 300, 0, 600),
 			),
 
 			"ele2pt": hist.Hist(
 				"Events",
 				hist.Cat("dataset","Dataset"),
-				hist.Bin("ele2pt","Subleading $Electron P_{T}$ [GeV]", 500, 0, 1000),
+				hist.Bin("ele2pt","Subleading $Electron P_{T}$ [GeV]", 300, 0, 600),
 			),
 			"ele1eta": hist.Hist(
 				"Events",
@@ -130,21 +120,16 @@ class MyZPeak(processor.ProcessorABC):
 				hist.Cat("dataset","Dataset"),
 				hist.Bin("os_mass","$m_{e+e-}$ [GeV]", 100, 0, 200),
 			),
-			"os_mass_60_120": hist.Hist(
-				"Events",
-				hist.Cat("dataset","Dataset"),
-				hist.Bin("os_mass_60_120","$m_{e+e-}$ [GeV]", 60, 60, 120),
-			),
 			"os_ele1pt": hist.Hist(
 				"Events",
 				hist.Cat("dataset","Dataset"),
-				hist.Bin("os_ele1pt","Leading Electron $P_{T}$ [GeV]", 500, 0, 1000),
+				hist.Bin("os_ele1pt","Leading Electron $P_{T}$ [GeV]", 300, 0, 600),
 			),
 
 			"os_ele2pt": hist.Hist(
 				"Events",
 				hist.Cat("dataset","Dataset"),
-				hist.Bin("os_ele2pt","Subleading $Electron P_{T}$ [GeV]", 500, 0, 1000),
+				hist.Bin("os_ele2pt","Subleading $Electron P_{T}$ [GeV]", 300, 0, 600),
 			),
 			"os_ele1eta": hist.Hist(
 				"Events",
@@ -168,13 +153,6 @@ class MyZPeak(processor.ProcessorABC):
 				hist.Cat("dataset","Dataset"),
 				hist.Bin("os_ele2phi","Subleading Electron $\phi$ [GeV]", 20, -3.15, 3.15),
 			),
-
-
-
-
-
-
-
 
 
 
@@ -213,8 +191,8 @@ class MyZPeak(processor.ProcessorABC):
 			for path in self._doubleelectron_triggers[self._year]:
 				if path not in events.HLT.fields: continue
 				double_ele_triggers_arr = double_ele_triggers_arr | events.HLT[path]
-		print("Double Electron triggers")
-		print(double_ele_triggers_arr,len(double_ele_triggers_arr))
+		#print("Double Electron triggers")
+		#print(double_ele_triggers_arr,len(double_ele_triggers_arr))
 
 
 		## single lepton trigger
@@ -227,15 +205,15 @@ class MyZPeak(processor.ProcessorABC):
 			for path in self._singleelectron_triggers[self._year]:
 				if path not in events.HLT.fields: continue
 				single_ele_triggers_arr = single_ele_triggers_arr | events.HLT[path]
-		print("Single Electron triggers")
-		print(single_ele_triggers_arr,len(single_ele_triggers_arr))
+		#print("Single Electron triggers")
+		#print(single_ele_triggers_arr,len(single_ele_triggers_arr))
 
 
 		
 		Initial_events = events
-		print("{0} number of events are detected".format(len(Initial_events)))
+		#print("{0} number of events are detected".format(len(Initial_events)))
 		events = events[single_ele_triggers_arr | double_ele_triggers_arr]
-		print("Total {0} number of events are remain after triggger | Eff: {1}".format(len(events), len(events) / len(Initial_events) * 100))
+		#print("Total {0} number of events are remain after triggger | Eff: {1}".format(len(events), len(events) / len(Initial_events) * 100))
 		
 
 		# Electron selection
@@ -279,56 +257,52 @@ class MyZPeak(processor.ProcessorABC):
 
 		# Electron kinematics
 		def makeZmass_window_mask(dielecs,start=60,end=120):
-			mask = dielecs.mass >=start and dielecs.mass <=end
+			mask = (dielecs.mass >=start) & (dielecs.mass <=end)
 			return mask
 
 		# flat dim for histo fill
 		def flat_dim(arr):
-			return ak.to_numpy(arr).flatten()
+			return ak.to_numpy(ak.flatten(arr))
 
 
-		# Basic
+		# -----Basic
+
+		Zmass_mask = makeZmass_window_mask(leading_diele)
+	
+		#--  If you need Z mass window cut
+		leading_ele    = leading_ele[Zmass_mask]
+		leading_diele  = leading_diele[Zmass_mask]
+		subleading_ele = subleading_ele[Zmass_mask]
+
+
 		ele1PT  = flat_dim(leading_ele.pt)
 		ele1Eta = flat_dim(leading_ele.eta)
 		ele1Phi = flat_dim(leading_ele.phi)
 		ele2PT  = flat_dim(subleading_ele.pt)
 		ele2Eta = flat_dim(subleading_ele.eta)
 		ele2Phi = flat_dim(subleading_ele.phi)
-		Mee     = leading_diele.mass
-		charge  = leading_diele.charge
+		Mee     = flat_dim(leading_diele.mass)
+		charge  = flat_dim(leading_diele.charge)
+		
+		
+		# -----OS
+		Zmass_mask = makeZmass_window_mask(leading_os_diele)
+		#Mee_60_120 = Mee[Zmass_mask]
+		#Mee_60_120 = ak.to_numpy(ak.flatten(Mee_60_120))
+	
+		#--  If you need Z mass window cut
+		leading_os_ele    = leading_os_ele[Zmass_mask]
+		leading_os_diele  = leading_os_diele[Zmass_mask]
+		subleading_os_ele = subleading_os_ele[Zmass_mask]
 
-		Zmass_mask = makeZmass_window_mask(leading_diele)
-		Mee_60_120 = Mee[Zmass_mask]
-		Mee_60_120 = ak.to_numpy(ak.flatten(Mee_60_120))
-		Mee = ak.to_numpy(Mee).flatten()
-		charge = ak.to_numpy(charge).flatten()
-		
-		
-		# OS
 		os_ele1PT  = flat_dim(leading_os_ele.pt)
 		os_ele1Eta = flat_dim(leading_os_ele.eta)
 		os_ele1Phi = flat_dim(leading_os_ele.phi)
 		os_ele2PT  = flat_dim(subleading_os_ele.pt)
 		os_ele2Eta = flat_dim(subleading_os_ele.eta)
 		os_ele2Phi = flat_dim(subleading_os_ele.phi)
-		os_Mee = leading_os_diele.mass
+		os_Mee     = flat_dim(leading_os_diele.mass)
 
-		os_Zmass_mask = makeZmass_window_mask(leading_os_diele)
-		os_Mee_60_120 = os_Mee[Zmass_mask]
-		os_Mee_60_120 = ak.to_numpy(ak.flatten(os_Mee_60_120))
-		os_Mee = ak.to_numpy(os_Mee).flatten()
-	
-
-
-
-
-
-	#	Zmass_mask = makeZmass_window_mask(leading_os_diele)	
-	#	Mee = leading_os_diele.mass
-	#	Mee_60_120 = Mee[Zmass_mask]
-	#	Mee_60_120 = ak.to_numpy(ak.flatten(Mee_60_120))
-	#	Mee = ak.to_numpy(Mee).flatten()
-	
 
 		out["sumw"][dataset] += len(events)
 		out["nElectrons"].fill(
@@ -345,10 +319,6 @@ class MyZPeak(processor.ProcessorABC):
 		out["charge"].fill(
 			dataset=dataset,
 			charge=charge
-		)
-		out["mass_60_120"].fill(
-			dataset=dataset,
-			mass_60_120=Mee_60_120
 		)
 		out["ele1pt"].fill(
 			dataset=dataset,
@@ -378,10 +348,6 @@ class MyZPeak(processor.ProcessorABC):
 		out["os_mass"].fill(
 			dataset=dataset,
 			os_mass=os_Mee
-		)
-		out["os_mass_60_120"].fill(
-			dataset=dataset,
-			os_mass_60_120=os_Mee_60_120
 		)
 		out["os_ele1pt"].fill(
 			dataset=dataset,

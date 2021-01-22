@@ -22,7 +22,7 @@ def reduce(folder,sample_list):
 	hsum_charge= hist.Hist(
 		   "Events",
 		   hist.Cat("dataset","Dataset"),
-		   hist.Bin("charge","charge sum of electrons", 4, -2, 2),
+		   hist.Bin("charge","charge sum of electrons", 6, -3, 3),
 	)
 
 	hsum_Mee = hist.Hist(
@@ -38,35 +38,35 @@ def reduce(folder,sample_list):
 	hsum_ele1pt = hist.Hist(
 		"Events",
 		hist.Cat("dataset","Dataset"),
-		hist.Bin("ele1pt","Leading Electron $P_{T}$ [GeV]",100,0,200)	
+		hist.Bin("ele1pt","Leading Electron $P_{T}$ [GeV]",200,0,400)	
 	)
 	hsum_ele2pt =  hist.Hist(
 		"Events",
 		hist.Cat("dataset","Dataset"),
-		hist.Bin("ele2pt","Subleading $Electron P_{T}$ [GeV]", 100, 0, 200),
+		hist.Bin("ele2pt","Subleading $Electron P_{T}$ [GeV]", 200, 0, 400),
 	)
 	
 	hsum_ele1eta= hist.Hist(
 		"Events",
 		hist.Cat("dataset","Dataset"),
-		hist.Bin("ele1eta","Leading Electron $\eta$ [GeV]", 6, -3, 3),
+		hist.Bin("ele1eta","Leading Electron $\eta$ [GeV]", 18, -3, 3),
 	)
 	
 	hsum_ele2eta =  hist.Hist(
 		"Events",
 		hist.Cat("dataset","Dataset"),
-		hist.Bin("ele2eta","Subleading Electron $\eta$ [GeV]", 6, -3, 3),
+		hist.Bin("ele2eta","Subleading Electron $\eta$ [GeV]", 18, -3, 3),
 	)
 	hsum_ele1phi =  hist.Hist(
 		"Events",
 		hist.Cat("dataset","Dataset"),
-		hist.Bin("ele1phi","Leading Electron $\phi$ [GeV]", 8, -3.15, 3.15),
+		hist.Bin("ele1phi","Leading Electron $\phi$ [GeV]", 20, -3.15, 3.15),
 	)
 	
 	hsum_ele2phi =  hist.Hist(
 		"Events",
 		hist.Cat("dataset","Dataset"),
-		hist.Bin("ele2phi","Subleading Electron $\phi$ [GeV]", 8, -3.15, 3.15),
+		hist.Bin("ele2phi","Subleading Electron $\phi$ [GeV]", 20, -3.15, 3.15),
 	)
 
 	hsum_os_Mee =  hist.Hist(
@@ -82,35 +82,35 @@ def reduce(folder,sample_list):
 	hsum_os_ele1pt =  hist.Hist(
 		"Events",
 		hist.Cat("dataset","Dataset"),
-		hist.Bin("os_ele1pt","Leading Electron $P_{T}$ [GeV]", 100, 0, 200),
+		hist.Bin("os_ele1pt","Leading Electron $P_{T}$ [GeV]", 200, 0, 400),
 	)
 	
 	hsum_os_ele2pt= hist.Hist(
 		"Events",
 		hist.Cat("dataset","Dataset"),
-		hist.Bin("os_ele2pt","Subleading $Electron P_{T}$ [GeV]", 100, 0, 200),
+		hist.Bin("os_ele2pt","Subleading $Electron P_{T}$ [GeV]", 200, 0, 400),
 	)
 	hsum_os_ele1eta =  hist.Hist(
 		"Events",
 		hist.Cat("dataset","Dataset"),
-		hist.Bin("os_ele1eta","Leading Electron $\eta$ [GeV]", 6, -3, 3),
+		hist.Bin("os_ele1eta","Leading Electron $\eta$ [GeV]", 20, -5, 5),
 	)
 	
 	hsum_os_ele2eta =  hist.Hist(
 		"Events",
 		hist.Cat("dataset","Dataset"),
-		hist.Bin("os_ele2eta","Subleading Electron $\eta$ [GeV]", 6, -3, 3),
+		hist.Bin("os_ele2eta","Subleading Electron $\eta$ [GeV]", 20, -5, 5),
 	)
 	hsum_os_ele1phi =  hist.Hist(
 		"Events",
 		hist.Cat("dataset","Dataset"),
-		hist.Bin("os_ele1phi","Leading Electron $\phi$ [GeV]", 8, -3.15, 3.15),
+		hist.Bin("os_ele1phi","Leading Electron $\phi$ [GeV]", 20, -3.15, 3.15),
 	)
 	
 	hsum_os_ele2phi =  hist.Hist(
 		"Events",
 		hist.Cat("dataset","Dataset"),
-		hist.Bin("os_ele2phi","Subleading Electron $\phi$ [GeV]", 8, -3.15, 3.15),
+		hist.Bin("os_ele2phi","Subleading Electron $\phi$ [GeV]", 20, -3.15, 3.15),
 	)
 	hsum_nElectrons = hist.Hist(
         "Events",
@@ -139,7 +139,7 @@ def reduce(folder,sample_list):
 		sumw_Egamma += hists[filename]['sumw']['Egamma']
 
 
-		hsum_charge.add(hists[filename]['charge'])
+		#hsum_charge.add(hists[filename]['charge'])
 		#hsum_nElectrons.add(hists[filename]['nElectrons'])
 		
 		hsum_Mee.add(hists[filename]['mass'])
@@ -151,14 +151,14 @@ def reduce(folder,sample_list):
 		#hsum_ele1phi.add(hists[filename]['ele1phi'])
 		#hsum_ele2phi.add(hists[filename]['ele2phi'])
 		
-		#hsum_os_Mee.add(hists[filename]['os_mass'])
+		hsum_os_Mee.add(hists[filename]['os_mass'])
 		#hsum_os_Mee_60_120.add(hists[filename]['os_mass_60_120'])
 		#hsum_os_ele1pt.add(hists[filename]['os_ele1pt'])
 		#hsum_os_ele2pt.add(hists[filename]['os_ele2pt'])
 		#hsum_os_ele1eta.add(hists[filename]['os_ele1eta'])
 		#hsum_os_ele2eta.add(hists[filename]['os_ele2eta'])
 		#hsum_os_ele1phi.add(hists[filename]['os_ele1phi'])
-		hsum_os_ele2phi.add(hists[filename]['os_ele2phi'])
+		#hsum_os_ele2phi.add(hists[filename]['os_ele2phi'])
 
 
 
@@ -166,7 +166,7 @@ def reduce(folder,sample_list):
 
 	print("Passing Trigger DY: ",sumw_DY * lumi * xsecDY / GenDY  )
 	print("Passing Trigger Egamma: ",sumw_Egamma)
-	return hsum_Mee,hsum_os_ele2phi
+	return hsum_Mee,hsum_os_Mee
 	
 
 
@@ -181,7 +181,7 @@ if __name__ == '__main__':
 	sample_list = ['DY','Egamma']
 
 	#h1_Mee, h1_nElectrons  = reduce("condorOut_non_trigger",sample_list)
-	h1, h1_os  = reduce("condorOut_v1",sample_list)
+	h1, h1_os  = reduce("condorOut_NonTrig_Masswindow",sample_list)
 
 
 	print("######## Loaded hist ############" )
@@ -223,6 +223,7 @@ if __name__ == '__main__':
 	from cycler import cycler
 	colors = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c']
 	ax.set_prop_cycle(cycler(color=colors))
+	#ax.set_xlim(0,400)
 	
 	fill_opts = {
 		'edgecolor': (0,0,0,0.3),
@@ -245,7 +246,7 @@ if __name__ == '__main__':
 	# MC plotting
 	hist.plot1d(
 
-		h1_os['DY'],
+		h1['DY'],
 		ax=ax,
 		clear=False,
 		stack=True,
@@ -256,7 +257,7 @@ if __name__ == '__main__':
 	# DATA plotting
 	hist.plot1d(
 	
-		h1_os['Egamma'],
+		h1['Egamma'],
 		ax=ax,
 		clear=False,
 		error_opts=data_err_opts
@@ -285,8 +286,8 @@ if __name__ == '__main__':
 
 	# Ratio Plot
 	hist.plotratio(
-		num=h1_os['Egamma'].sum("dataset"),
-		denom=h1_os['DY'].sum("dataset"),
+		num=h1['Egamma'].sum("dataset"),
+		denom=h1['DY'].sum("dataset"),
 		ax=rax,
 		error_opts=data_err_opts,
 		denom_fill_opts={},
@@ -306,4 +307,4 @@ if __name__ == '__main__':
 	ax.set_yscale('log')
 	leg = ax.legend()
 
-	plt.savefig("Ele2Phi.png")	
+	plt.savefig("Mee.png")	
