@@ -27,7 +27,13 @@ parser.add_argument('--dataset', type=str,
 
 args = parser.parse_args()
 
+## Prepare files
+N_node = args.nWorker
+metadata = args.metadata
+data_sample = args.dataset
 
+
+setname = metadata.split('.')[0].split('/')[1]
 
 # ---> Class MuZPeak
 class MyZPeak(processor.ProcessorABC):
@@ -40,13 +46,7 @@ class MyZPeak(processor.ProcessorABC):
 
 		self._doubleelectron_triggers  ={
 			'2018': [
-			#		"HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ",
-					"HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL", # Recomended
-			#		"HLT_DiEle27_WPTightCaloOnly_L1DoubleEG",
-			#		"HLT_DoubleEle33_CaloIdL_MW",
-			#		"HLT_DoubleEle25_CaloIdL_MW"
-			#		"HLT_DoubleEle27_CaloIdL_MW",
-			#		"HLT_DoublePhoton70"
+					"Ele23_Ele12_CaloIdL_TrackIdL_IsoVL", # Recomended
 					]
 		}
 	
@@ -152,15 +152,8 @@ class MyZPeak(processor.ProcessorABC):
 				"Events",
 				hist.Cat("dataset","Dataset"),
 				hist.Bin("os_ele2phi","Subleading Electron $\phi$ [GeV]", 20, -3.15, 3.15),
-			),
-
-
-
-			"nElectrons":hist.Hist(
-				"Events",
-				hist.Cat("dataset","Dataset"),
-				hist.Bin("nElectrons","# of Electrons",10,0,10)
 			)
+
 		})
 		
 	# -- Accumulator: accumulate histograms
@@ -173,12 +166,17 @@ class MyZPeak(processor.ProcessorABC):
 
 		# Initialize accumulator
 		out = self.accumulator.identity()
-		dataset = events.metadata['dataset']
+		dataset = setname
+		#events.metadata['dataset']
+		
 
-		# Lumi section
-		#print("############## Start ... Matching Golden Json files ##############")
-		#Golden_json = "Cert_314472-325175_13TeV_Legacy2018_Collisions18_JSON.txt"
-		#print(lumi_tools.LumiMask(Golden_json)(events['run'],events['luminosityBlock']))
+		# flat dim for histo fill
+		def flat_dim(arr):
+
+			sub_arr = ak.flatten(arr)
+			mask = ~ak.is_none(sub_arr)
+
+			return ak.to_numpy(sub_arr[mask])
 		
 
 		## double lepton trigger
@@ -211,107 +209,117 @@ class MyZPeak(processor.ProcessorABC):
 
 		
 		Initial_events = events
-		#print("{0} number of events are detected".format(len(Initial_events)))
+		print("{0} number of events are detected".format(len(Initial_events)))
 		events = events[single_ele_triggers_arr | double_ele_triggers_arr]
-		#print("Total {0} number of events are remain after triggger | Eff: {1}".format(len(events), len(events) / len(Initial_events) * 100))
+		print("Total {0} number of events are remain after triggger | Eff: {1}".format(len(events), len(events) / len(Initial_events) * 100))
+		
+		
+		# ---- Define Particles
+		Electron = events.Electron
+
+		def Electron_selection(ele):
+			return(ele.pt > 20) & (np.abs(ele.eta) < 2.5) & (ele.cutBased > 1)
 		
 
-		# Electron selection
-		Electron = events.Electron
-			# CutBased ID -->   0:fail, 1:veto, 2:loose, 3:medium, 4:tight
-		Electron_mask = (Electron.pt >20) & (np.abs(Electron.eta) < 2.5) & (Electron.cutBased > 1) 
+		# ---- Define Channel 
+		Electron_mask = Electron_selection(Electron)
 		Ele_channel_mask = ak.num(Electron[Electron_mask]) > 1
 		Ele_channel_events = events[Ele_channel_mask]
-		Ele = Ele_channel_events.Electron
-		
 
-		# All possible pairs of Electron in each event
-		ele_pairs = ak.combinations(Ele,2,axis=1)
-		
-		# Ele_pairs
+		N_Ele_Channel_events = len(Ele_channel_events)
+		print("#1 Ele channel evts: {0} --> {1}".format(len(events),N_Ele_Channel_events))
+
+		# ---- Electron
+		Ele = Ele_channel_events.Electron
+		Electron_mask = Electron_selection(Ele)	
+		Ele_sel = Ele[Electron_mask]	
+
+		##  -- Define Ele-Pair --
+		ele_pairs = ak.combinations(Ele_sel,2,axis=1)
 		ele_left, ele_right = ak.unzip(ele_pairs)
 		diele = ele_left + ele_right
-			
-		# Opposite sign cut	
-		os_mask		 = diele.charge==0
+
+		## -- Oposite Sign cut --
+		os_mask		 = diele.charge == 0 
 		os_diele	 = diele[os_mask]
 		os_ele_left  = ele_left[os_mask]
 		os_ele_right = ele_right[os_mask]
+		
 
-		# Leading pair (Highest PT parir)
+		## Validate test1 
+		base_L = len(flat_dim(ele_left))
+		base_R = len(flat_dim(ele_right))
+		base_A = len(flat_dim(diele))
+		
+		os_L = len(flat_dim(os_ele_left))
+		os_R = len(flat_dim(os_ele_right))
+		os_A = len(flat_dim(os_diele))
+		
+
+		## -- Select Highest-PT pair -- 
 		def make_leading_pair(target,base):
+
 			return target[ak.argmax(base.pt,axis=1,keepdims=True)]
 
-		# Leading set
-		leading_diele	  = make_leading_pair(diele,diele)
-		leading_ele		  = make_leading_pair(ele_left,diele)
-		subleading_ele    = make_leading_pair(ele_right,diele)
+
+		# -- Only Leading pair --
+		leading_diele = make_leading_pair(diele,diele)
+		leading_ele   = make_leading_pair(ele_left,diele)
+		subleading_ele= make_leading_pair(ele_right,diele)
 
 
-		# OS and Leading set
-		leading_os_diele  = make_leading_pair(os_diele,os_diele)
-		leading_os_ele    = make_leading_pair(os_ele_left,os_diele)
-		subleading_os_ele = make_leading_pair(os_ele_right,os_diele)
+		# --OS and Leading pair --
+		leading_os_diele = make_leading_pair(os_diele,os_diele)
+		leading_os_ele   = make_leading_pair(os_ele_left,os_diele)
+		subleading_os_ele= make_leading_pair(os_ele_right,os_diele)
+
+
 		
-		
 
-		# Electron kinematics
+		## -- Z-mass window --
 		def makeZmass_window_mask(dielecs,start=60,end=120):
-			mask = (dielecs.mass >=start) & (dielecs.mass <=end)
+			mask = (dielecs.mass >= start) & (dielecs.mass <= end)	
 			return mask
 
-		# flat dim for histo fill
-		def flat_dim(arr):
-			return ak.to_numpy(ak.flatten(arr))
-
-
-		# -----Basic
-
+		# -- Only Leading pair --
 		Zmass_mask = makeZmass_window_mask(leading_diele)
-	
-		#--  If you need Z mass window cut
-		leading_ele    = leading_ele[Zmass_mask]
-		leading_diele  = leading_diele[Zmass_mask]
-		subleading_ele = subleading_ele[Zmass_mask]
+		leading_Zwindow_ele = leading_ele[Zmass_mask]
+		subleading_Zwindow_ele = subleading_ele[Zmass_mask]
+		leading_Zwindow_diele = leading_diele[Zmass_mask]
+
+		# -- OS and Leading pair --
+		Zmass_mask_os = makeZmass_window_mask(leading_os_diele)
+		leading_os_Zwindow_ele = leading_os_ele[Zmass_mask_os]
+		subleading_os_Zwindow_ele = subleading_os_ele[Zmass_mask_os]
+		leading_os_Zwindow_diele = leading_os_diele[Zmass_mask_os]
 
 
-		ele1PT  = flat_dim(leading_ele.pt)
-		ele1Eta = flat_dim(leading_ele.eta)
-		ele1Phi = flat_dim(leading_ele.phi)
-		ele2PT  = flat_dim(subleading_ele.pt)
-		ele2Eta = flat_dim(subleading_ele.eta)
-		ele2Phi = flat_dim(subleading_ele.phi)
-		Mee     = flat_dim(leading_diele.mass)
-		charge  = flat_dim(leading_diele.charge)
-		
-		
-		# -----OS
-		Zmass_mask = makeZmass_window_mask(leading_os_diele)
-		#Mee_60_120 = Mee[Zmass_mask]
-		#Mee_60_120 = ak.to_numpy(ak.flatten(Mee_60_120))
-	
-		#--  If you need Z mass window cut
-		leading_os_ele    = leading_os_ele[Zmass_mask]
-		leading_os_diele  = leading_os_diele[Zmass_mask]
-		subleading_os_ele = subleading_os_ele[Zmass_mask]
+		ele1PT  = flat_dim(leading_Zwindow_ele.pt)
+		ele1Eta = flat_dim(leading_Zwindow_ele.eta)
+		ele1Phi = flat_dim(leading_Zwindow_ele.phi)
+		ele2PT  = flat_dim(subleading_Zwindow_ele.pt)
+		ele2Eta = flat_dim(subleading_Zwindow_ele.eta)
+		ele2Phi = flat_dim(subleading_Zwindow_ele.phi)
+		Mee     = flat_dim(leading_Zwindow_diele.mass)
+		charge  = flat_dim(leading_Zwindow_diele.charge)
 
-		os_ele1PT  = flat_dim(leading_os_ele.pt)
-		os_ele1Eta = flat_dim(leading_os_ele.eta)
-		os_ele1Phi = flat_dim(leading_os_ele.phi)
-		os_ele2PT  = flat_dim(subleading_os_ele.pt)
-		os_ele2Eta = flat_dim(subleading_os_ele.eta)
-		os_ele2Phi = flat_dim(subleading_os_ele.phi)
-		os_Mee     = flat_dim(leading_os_diele.mass)
+		os_ele1PT  = flat_dim(leading_os_Zwindow_ele.pt)
+		os_ele1Eta = flat_dim(leading_os_Zwindow_ele.eta)
+		os_ele1Phi = flat_dim(leading_os_Zwindow_ele.phi)
+		os_ele2PT  = flat_dim(subleading_os_Zwindow_ele.pt)
+		os_ele2Eta = flat_dim(subleading_os_Zwindow_ele.eta)
+		os_ele2Phi = flat_dim(subleading_os_Zwindow_ele.phi)
+		os_Mee     = flat_dim(leading_os_Zwindow_diele.mass)
+		os_charge  = flat_dim(leading_os_Zwindow_diele.charge)
+
+
+
+		print("#5 Leading PT : {0}".format(len(ele1PT)))
+		print("#5 Leading os PT  {0}".format(len(os_ele1PT)))
 
 
 		out["sumw"][dataset] += len(events)
-		out["nElectrons"].fill(
-			dataset=dataset,
-			#nElectrons= ak.to_numpy(ak.num(Ele))
-			nElectrons= ak.num(Ele)
-		)
-
-
+	
 		out["mass"].fill(
 			dataset=dataset,
 			mass=Mee
@@ -376,6 +384,7 @@ class MyZPeak(processor.ProcessorABC):
 
 
 
+
 		return out
 
 	# -- Finally! return accumulator
@@ -386,23 +395,29 @@ class MyZPeak(processor.ProcessorABC):
 
 
 
-## Prepare files
-N_node = args.nWorker
-metadata = args.metadata
-data_sample = args.dataset
 
 
 
+
+## Json file reader
 with open(metadata) as fin:
 	datadict = json.load(fin)
 
 filelist = glob.glob(datadict[data_sample])
-
-
+print(filelist)
 sample_name = data_sample.split('_')[0]
+
+
+# test one file 
+#sample_name="Egamma"
+#filelist=["/x6/cms/store_Cert_314472-325175_13TeV_Legacy2018_Collisions18_JSON/data/Run2018A/EGamma/NANOAOD/UL2018_MiniAODv1_NanoAODv2-v1/280000/D628EAD9-EACA-0640-AF0C-A0698767F9DE_Skim.root"]
+
+
+print(sample_name)
 samples = {
 	sample_name : filelist
 }
+
 
 
 ## -->Multi-node Executor
@@ -411,8 +426,8 @@ result = processor.run_uproot_job(
 	"Events", # Tree name
 	MyZPeak(), # Class
 	executor=processor.futures_executor,
-	executor_args={"schema": NanoAODSchema, "workers": N_node},
-	#maxchunks=4,
+	executor_args={"schema": NanoAODSchema, "workers": 20},
+#maxchunks=4,
 )
 
 
