@@ -15,34 +15,18 @@ start = time.time()
 
 
 
-parser = argparse.ArgumentParser()
-
-parser.add_argument('--nWorker', type=int,
-			help=" --nWorker 2", default=20)
-parser.add_argument('--metadata', type=str,
-			help="--metadata xxx.json")
-parser.add_argument('--dataset', type=str,
-			help="--dataset ex) Egamma_Run2018A_280000")
 
 
-args = parser.parse_args()
-
-## Prepare files
-N_node = args.nWorker
-metadata = args.metadata
-data_sample = args.dataset
 
 
-setname = metadata.split('.')[0].split('/')[1]
-
-# ---> Class MuZPeak
-class MyZPeak(processor.ProcessorABC):
+# ---> Class JW Processor
+class JW_Processor(processor.ProcessorABC):
 
 	# -- Initializer
-	def __init__(self):
+	def __init__(self,year,setname):
 
 
-		self._year = '2018'
+		self._year = year
 
 		self._doubleelectron_triggers  ={
 			'2018': [
@@ -390,57 +374,70 @@ class MyZPeak(processor.ProcessorABC):
 	# -- Finally! return accumulator
 	def postprocess(self,accumulator):
 		return accumulator
-# <---- Class MyZPeak
+# <---- Class JW_Processor
 
 
+if __name__ == '__main__':
 
-
-
-
-
-
-## Json file reader
-with open(metadata) as fin:
-	datadict = json.load(fin)
-
-filelist = glob.glob(datadict[data_sample])
-print(filelist)
-sample_name = data_sample.split('_')[0]
-
-
-# test one file 
-#sample_name="Egamma"
-#filelist=["/x6/cms/store_Cert_314472-325175_13TeV_Legacy2018_Collisions18_JSON/data/Run2018A/EGamma/NANOAOD/UL2018_MiniAODv1_NanoAODv2-v1/280000/D628EAD9-EACA-0640-AF0C-A0698767F9DE_Skim.root"]
-
-
-print(sample_name)
-samples = {
-	sample_name : filelist
-}
-
-
-
-## -->Multi-node Executor
-result = processor.run_uproot_job(
-	samples,  #dataset
-	"Events", # Tree name
-	MyZPeak(), # Class
-	executor=processor.futures_executor,
-	executor_args={"schema": NanoAODSchema, "workers": 20},
-#maxchunks=4,
-)
-
-
-
-
-outname = data_sample + '.futures'
-save(result,outname)
-
-
-elapsed_time = time.time() - start
-print("Time: ",elapsed_time)
-## <-------------------------
-
-
-
-
+	parser = argparse.ArgumentParser()
+	
+	parser.add_argument('--nWorker', type=int,
+				help=" --nWorker 2", default=20)
+	parser.add_argument('--metadata', type=str,
+				help="--metadata xxx.json")
+	parser.add_argument('--dataset', type=str,
+				help="--dataset ex) Egamma_Run2018A_280000")
+	args = parser.parse_args()
+	
+	
+	
+	## Prepare files
+	N_node = args.nWorker
+	metadata = args.metadata
+	data_sample = args.dataset
+	year='2018'
+	
+	
+	## Json file reader
+	with open(metadata) as fin:
+		datadict = json.load(fin)
+	
+	filelist = glob.glob(datadict[data_sample])
+	print(filelist)
+	sample_name = data_sample.split('_')[0]
+	setname = metadata.split('.')[0].split('/')[1]
+	
+	
+	## Read Correction file
+	corr_file = "../Corrections/corrections.coffea"
+	corrections = load(corr_file)
+	
+	# test one file 
+	#sample_name="Egamma"
+	#filelist=["/x6/cms/store_Cert_314472-325175_13TeV_Legacy2018_Collisions18_JSON/data/Run2018A/EGamma/NANOAOD/UL2018_MiniAODv1_NanoAODv2-v1/280000/D628EAD9-EACA-0640-AF0C-A0698767F9DE_Skim.root"]
+	
+	print(sample_name)
+	samples = {
+		sample_name : filelist
+	}
+	
+	
+	# Class -> Object
+	JW_Processor_instance = JW_Processor(year,setname)
+	
+	
+	## -->Multi-node Executor
+	result = processor.run_uproot_job(
+		samples,  #dataset
+		"Events", # Tree name
+		JW_Processor_instance, # Class
+		executor=processor.futures_executor,
+		executor_args={"schema": NanoAODSchema, "workers": 20},
+	#maxchunks=4,
+	)
+	
+	outname = data_sample + '.futures'
+	save(result,outname)
+	
+	elapsed_time = time.time() - start
+	print("Time: ",elapsed_time)
