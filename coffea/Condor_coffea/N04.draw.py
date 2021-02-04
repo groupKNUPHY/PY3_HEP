@@ -14,7 +14,7 @@ xsecDY=2137.0
 hsum_cutflow = hist.Hist(
     'Events',
     hist.Cat('dataset', 'Dataset'),
-    hist.Bin('cutflow', 'Cut index', [0, 1, 2, 3,4])
+    hist.Bin('cutflow', 'Cut index', [0, 1, 2, 3,4,5])
 )
 
 hsum_charge= hist.Hist(
@@ -107,10 +107,12 @@ def reduce(folder,sample_list,histname):
 
 isPU=False
 
-if isPU:
-	file_path="condorOut_PU"
-else:
-	file_path="condorOut"
+#if isPU:
+#	file_path="condorOut_AB_PU"
+#else:
+#	file_path="condorOut_AB"
+
+file_path = "condorOut"
 
 
 
@@ -131,7 +133,7 @@ sample_list = ['DY','Egamma']
 #histname = "ele1phi"; xmin=-3.15; xmax=3.15; ymin=100; ymax=5e+6;
 #histname = "ele2phi"; xmin=-3.15; xmax=3.15; ymin=100; ymax=5e+6;
 
-histname = "cutflow"; xmin=0; xmax=5; ymin=1; ymax=1e+10
+histname = "cutflow"; xmin=0; xmax=5; ymin=1; ymax=5e+8
 
 ################################################################
 ## --All-reduce 
@@ -246,7 +248,7 @@ ax.autoscale(axis='x', tight=True)
 ax.set_ylim(ymin,ymax)
 ax.set_xlim(xmin,xmax)
 ax.set_xlabel('')
-ax.set_yscale('log')
+#ax.set_yscale('log')
 
 
 #rax.set_xlabel('# of Priamary vertex')
@@ -256,7 +258,7 @@ ax.set_yscale('log')
 
 
 
-lum = plt.text(1., 1., r"53 fb$^{-1}$ (13 TeV)",
+lum = plt.text(1., 1., r"21.1 fb$^{-1}$ (13 TeV)",
                 fontsize=16,
                 horizontalalignment='right',
                 verticalalignment='bottom',
@@ -264,11 +266,12 @@ lum = plt.text(1., 1., r"53 fb$^{-1}$ (13 TeV)",
                )
 
 
-if isPU:
-	outname = histname + "_PU" + ".png"
-else:
-	outname = histname  + ".png"
+#if isPU:
+#	outname = histname + "_PU" + ".png"
+#else:
+#	outname = histname  + ".png"
 
+outname = histname + "_Linear" + ".png"
 
 #plt.show()
 plt.savefig(outname)

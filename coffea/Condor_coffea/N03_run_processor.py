@@ -15,8 +15,7 @@ from coffea import lumi_tools
 class JW_Processor(processor.ProcessorABC):
 
 	# -- Initializer
-	#def __init__(self,year,setname,corrections,xsec=1):
-	def __init__(self,year,setname,xsec,puweight_arr):
+	def __init__(self,year,setname,xsec,puweight_arr,corrections):
 
 
 		lumis = { #Values from https://twiki.cern.ch/twiki/bin/viewauth/CMS/PdmVAnalysisSummaryTable													  
@@ -61,9 +60,11 @@ class JW_Processor(processor.ProcessorABC):
 		
 
 		# Corrrection set <-- on developing -->
-		#self._corrections = corrections
-
+		self._corrections = corrections
 		self._puweight_arr = puweight_arr
+
+		
+
 
 
 		# hist set
@@ -74,7 +75,7 @@ class JW_Processor(processor.ProcessorABC):
 			'cutflow': hist.Hist(
 				'Events',
 				hist.Cat('dataset', 'Dataset'),
-				hist.Bin('cutflow', 'Cut index', [0, 1, 2, 3, 4])
+				hist.Bin('cutflow', 'Cut index', [0, 1, 2, 3, 4,5])
 			),
 
 
@@ -232,6 +233,9 @@ class JW_Processor(processor.ProcessorABC):
 			#get_pu_weight = self._corrections['get_pu_weight'][self._year]
 			#pu = get_pu_weight(events.Pileup.nTrueInt)
 	
+			get_ele_reco_sf = self._corrections['get_ele_reco_sf'][self._year]
+			get_ele_loose_id_sf = self._corrections['get_ele_loose_id_sf'][self._year]
+
 			# PU weight with custom made npy and multi-indexing
 			pu_weight_idx = ak.values_astype(Ele_channel_events.Pileup.nTrueInt,"int64")
 			pu = self._puweight_arr[pu_weight_idx]
@@ -271,9 +275,16 @@ class JW_Processor(processor.ProcessorABC):
 
 		# -- Only Leading pair --
 		leading_diele = make_leading_pair(diele,diele)
-		#leading_ele   = make_leading_pair(ele_left,diele)
-		#subleading_ele= make_leading_pair(ele_right,diele)
+		leading_ele   = make_leading_pair(ele_left,diele)
+		subleading_ele= make_leading_pair(ele_right,diele)
 
+		if not isData:
+			ele_loose_id_sf = get_ele_loose_id_sf(ak.flatten(leading_ele.deltaEtaSC + leading_ele.eta),ak.flatten(leading_ele.pt))* get_ele_loose_id_sf(ak.flatten(subleading_ele.deltaEtaSC + subleading_ele.eta),ak.flatten(subleading_ele.pt))
+			#print("Ele ID SC---->",ele_loose_id_sf)
+			
+			ele_reco_sf = get_ele_reco_sf(ak.flatten(leading_ele.deltaEtaSC + leading_ele.eta),ak.flatten(leading_ele.pt))* get_ele_reco_sf(ak.flatten(subleading_ele.deltaEtaSC + subleading_ele.eta),ak.flatten(subleading_ele.pt))
+			#print("Ele RECO SC---->",ele_reco_sf)
+		
 
 		# --OS and Leading pair --
 		leading_os_diele = make_leading_pair(os_diele,os_diele)
@@ -336,12 +347,13 @@ class JW_Processor(processor.ProcessorABC):
 			return ak.to_numpy(subarr[mask2])
 
 		cuts = ak.flatten(Zmass_mask_os)
-		#if not isData:
-		#	weights.add('pileup',pu)		
-
+		if not isData:
+			weights.add('pileup',pu)		
+			weights.add('ele_id',ele_loose_id_sf)		
+			weights.add('ele_reco',ele_reco_sf)		
 
 		# Initial events
-		out["sumw"][dataset] += len(events)
+		out["sumw"][dataset] += len(Initial_events)
 
 
 		# Cut flow loop
@@ -358,8 +370,6 @@ class JW_Processor(processor.ProcessorABC):
 			weight = weights.weight()
 		)
 
-		print('pu: ',weights.weight())
-		print('pu cut4: ',skim_weight(weights.weight() * cuts))
 		# Physics varibles passing Zwindow
 		out["mass"].fill(
 			dataset=dataset,
@@ -476,8 +486,8 @@ if __name__ == '__main__':
 	
 	## Read Correction file <-- on developing -->
 	#corr_file = "../Corrections/corrections.coffea"
-	#corr_file = "corrections.coffea"
-	#corrections = load(corr_file)
+	corr_file = "corrections.coffea"
+	corrections = load(corr_file)
 
 	## Read PU weight file
 	#with open('../Corrections/Pileup/puWeight/pu_weight_RunAB.npy','rb') as f:
@@ -497,7 +507,7 @@ if __name__ == '__main__':
 	
 	# Class -> Object
 	#JW_Processor_instance = JW_Processor(year,setname,corrections,xsecDY)  <--on developing-->
-	JW_Processor_instance = JW_Processor(year,setname,xsecDY,pu)
+	JW_Processor_instance = JW_Processor(year,setname,xsecDY,pu,corrections)
 	
 	
 	## -->Multi-node Executor
