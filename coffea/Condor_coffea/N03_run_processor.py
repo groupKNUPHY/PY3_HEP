@@ -10,24 +10,32 @@ import argparse
 import numpy as np
 from coffea import lumi_tools
 
-start = time.time()
-
-
-
-
-
-
-
 
 # ---> Class JW Processor
 class JW_Processor(processor.ProcessorABC):
 
 	# -- Initializer
-	def __init__(self,year,setname):
+	#def __init__(self,year,setname,corrections,xsec=1):
+	def __init__(self,year,setname,xsec,puweight_arr):
 
 
+		lumis = { #Values from https://twiki.cern.ch/twiki/bin/viewauth/CMS/PdmVAnalysisSummaryTable													  
+		#'2016': 35.92,
+		#'2017': 41.53,
+		'2018': 21.1
+		}	
+
+		
+
+		# Parameter set
 		self._year = year
+		self._lumi = lumis[self._year] * 1000
 
+		self._xsec = xsec
+		
+		
+
+		# Trigger set
 		self._doubleelectron_triggers  ={
 			'2018': [
 					"Ele23_Ele12_CaloIdL_TrackIdL_IsoVL", # Recomended
@@ -51,9 +59,30 @@ class JW_Processor(processor.ProcessorABC):
 				]
 			}
 		
+
+		# Corrrection set <-- on developing -->
+		#self._corrections = corrections
+
+		self._puweight_arr = puweight_arr
+
+
+		# hist set
 		self._accumulator = processor.dict_accumulator({
 
 			"sumw": processor.defaultdict_accumulator(float),
+	
+			'cutflow': hist.Hist(
+				'Events',
+				hist.Cat('dataset', 'Dataset'),
+				hist.Bin('cutflow', 'Cut index', [0, 1, 2, 3, 4])
+			),
+
+
+			"nPV": hist.Hist(
+				"Events",
+				hist.Cat("dataset","Dataset"),
+				hist.Bin("nPV","Number of Primary vertex",100, 0, 100),
+			),
 
 			"mass": hist.Hist(
 				"Events",
@@ -64,6 +93,11 @@ class JW_Processor(processor.ProcessorABC):
 				"Events",
 				hist.Cat("dataset","Dataset"),
 				hist.Bin("charge","charge sum of electrons", 6, -3, 3),
+			),
+			"mass": hist.Hist(
+				"Events",
+				hist.Cat("dataset","Dataset"),
+				hist.Bin("mass","$m_{e+e-}$ [GeV]", 100, 0, 200),
 			),
 			"ele1pt": hist.Hist(
 				"Events",
@@ -97,48 +131,8 @@ class JW_Processor(processor.ProcessorABC):
 				"Events",
 				hist.Cat("dataset","Dataset"),
 				hist.Bin("ele2phi","Subleading Electron $\phi$ [GeV]", 20, -3.15, 3.15),
-			),
-
-			"os_mass": hist.Hist(
-				"Events",
-				hist.Cat("dataset","Dataset"),
-				hist.Bin("os_mass","$m_{e+e-}$ [GeV]", 100, 0, 200),
-			),
-			"os_ele1pt": hist.Hist(
-				"Events",
-				hist.Cat("dataset","Dataset"),
-				hist.Bin("os_ele1pt","Leading Electron $P_{T}$ [GeV]", 300, 0, 600),
-			),
-
-			"os_ele2pt": hist.Hist(
-				"Events",
-				hist.Cat("dataset","Dataset"),
-				hist.Bin("os_ele2pt","Subleading $Electron P_{T}$ [GeV]", 300, 0, 600),
-			),
-			"os_ele1eta": hist.Hist(
-				"Events",
-				hist.Cat("dataset","Dataset"),
-				hist.Bin("os_ele1eta","Leading Electron $\eta$ [GeV]", 20, -5, 5),
-			),
-
-			"os_ele2eta": hist.Hist(
-				"Events",
-				hist.Cat("dataset","Dataset"),
-				hist.Bin("os_ele2eta","Subleading Electron $\eta$ [GeV]", 20, -5, 5),
-			),
-			"os_ele1phi": hist.Hist(
-				"Events",
-				hist.Cat("dataset","Dataset"),
-				hist.Bin("os_ele1phi","Leading Electron $\phi$ [GeV]", 20, -3.15, 3.15),
-			),
-
-			"os_ele2phi": hist.Hist(
-				"Events",
-				hist.Cat("dataset","Dataset"),
-				hist.Bin("os_ele2phi","Subleading Electron $\phi$ [GeV]", 20, -3.15, 3.15),
 			)
-
-		})
+			})
 		
 	# -- Accumulator: accumulate histograms
 	@property
@@ -154,17 +148,39 @@ class JW_Processor(processor.ProcessorABC):
 		#events.metadata['dataset']
 		
 
-		# flat dim for histo fill
+		isData = 'genWeight' not in events.fields
+		
+
+		selection = processor.PackedSelection()
+
+		# Cut flow
+		cut0 = np.zeros(len(events))
+		
+
+		# --- Selection
+
+		# << flat dim helper function >>
 		def flat_dim(arr):
 
 			sub_arr = ak.flatten(arr)
 			mask = ~ak.is_none(sub_arr)
 
 			return ak.to_numpy(sub_arr[mask])
-		
+		# << drop na helper function <<
+		def drop_na(arr):
 
-		## double lepton trigger
-		# ---- Not applied yet-------------------------------#
+			mask = ~ak.is_none(arr)
+
+			return arr[mask]
+		# << drop na helper function <<
+		def drop_na_np(arr):
+
+			mask = ~np.isnan(arr)
+
+			return arr[mask]
+
+
+		# double lepton trigger
 		is_double_ele_trigger=True
 		if not is_double_ele_trigger:
 			double_ele_triggers_arr=np.ones(len(events), dtype=np.bool)
@@ -173,12 +189,9 @@ class JW_Processor(processor.ProcessorABC):
 			for path in self._doubleelectron_triggers[self._year]:
 				if path not in events.HLT.fields: continue
 				double_ele_triggers_arr = double_ele_triggers_arr | events.HLT[path]
-		#print("Double Electron triggers")
-		#print(double_ele_triggers_arr,len(double_ele_triggers_arr))
 
 
-		## single lepton trigger
-		# ---- Not applied yet-------------------------------#
+		# single lepton trigger
 		is_single_ele_trigger=True
 		if not is_single_ele_trigger:
 			single_ele_triggers_arr=np.ones(len(events), dtype=np.bool)
@@ -187,60 +200,70 @@ class JW_Processor(processor.ProcessorABC):
 			for path in self._singleelectron_triggers[self._year]:
 				if path not in events.HLT.fields: continue
 				single_ele_triggers_arr = single_ele_triggers_arr | events.HLT[path]
-		#print("Single Electron triggers")
-		#print(single_ele_triggers_arr,len(single_ele_triggers_arr))
 
 
 		
 		Initial_events = events
-		print("{0} number of events are detected".format(len(Initial_events)))
 		events = events[single_ele_triggers_arr | double_ele_triggers_arr]
-		print("Total {0} number of events are remain after triggger | Eff: {1}".format(len(events), len(events) / len(Initial_events) * 100))
 		
+		##----------- Cut flow1: Passing Triggers
+		cut1 = np.ones(len(events))
 		
-		# ---- Define Particles
+		# Particle Identification
 		Electron = events.Electron
 
 		def Electron_selection(ele):
 			return(ele.pt > 20) & (np.abs(ele.eta) < 2.5) & (ele.cutBased > 1)
 		
 
-		# ---- Define Channel 
+		# Electron channel
 		Electron_mask = Electron_selection(Electron)
 		Ele_channel_mask = ak.num(Electron[Electron_mask]) > 1
 		Ele_channel_events = events[Ele_channel_mask]
 
-		N_Ele_Channel_events = len(Ele_channel_events)
-		print("#1 Ele channel evts: {0} --> {1}".format(len(events),N_Ele_Channel_events))
 
-		# ---- Electron
+		##-----------  Cut flow2: Electron channel
+		cut2 = np.ones(len(Ele_channel_events)) * 2
+		
+		# --- Calculate Scale factor weight
+		
+		if not isData:
+			# PU weight with lookup table <-- On developing -->
+			#get_pu_weight = self._corrections['get_pu_weight'][self._year]
+			#pu = get_pu_weight(events.Pileup.nTrueInt)
+	
+			# PU weight with custom made npy and multi-indexing
+			pu_weight_idx = ak.values_astype(Ele_channel_events.Pileup.nTrueInt,"int64")
+			pu = self._puweight_arr[pu_weight_idx]
+			nPV = Ele_channel_events.Pileup.nTrueInt
+		
+		else:
+			nPV = Ele_channel_events.PV.npvsGood
+
+
+		# Electron array
 		Ele = Ele_channel_events.Electron
 		Electron_mask = Electron_selection(Ele)	
 		Ele_sel = Ele[Electron_mask]	
 
-		##  -- Define Ele-Pair --
+
+
+		# Electron pair
 		ele_pairs = ak.combinations(Ele_sel,2,axis=1)
 		ele_left, ele_right = ak.unzip(ele_pairs)
 		diele = ele_left + ele_right
 
-		## -- Oposite Sign cut --
+		# OS
 		os_mask		 = diele.charge == 0 
 		os_diele	 = diele[os_mask]
 		os_ele_left  = ele_left[os_mask]
 		os_ele_right = ele_right[os_mask]
-		
+		os_event_mask = ak.num(os_diele) > 0
+		Ele_os_channel_events = Ele_channel_events[os_event_mask]
+		#selection.add('ossf',os_event_mask)
 
-		## Validate test1 
-		base_L = len(flat_dim(ele_left))
-		base_R = len(flat_dim(ele_right))
-		base_A = len(flat_dim(diele))
-		
-		os_L = len(flat_dim(os_ele_left))
-		os_R = len(flat_dim(os_ele_right))
-		os_A = len(flat_dim(os_diele))
-		
 
-		## -- Select Highest-PT pair -- 
+		# Helper function: High PT argmax
 		def make_leading_pair(target,base):
 
 			return target[ak.argmax(base.pt,axis=1,keepdims=True)]
@@ -248,8 +271,8 @@ class JW_Processor(processor.ProcessorABC):
 
 		# -- Only Leading pair --
 		leading_diele = make_leading_pair(diele,diele)
-		leading_ele   = make_leading_pair(ele_left,diele)
-		subleading_ele= make_leading_pair(ele_right,diele)
+		#leading_ele   = make_leading_pair(ele_left,diele)
+		#subleading_ele= make_leading_pair(ele_right,diele)
 
 
 		# --OS and Leading pair --
@@ -257,132 +280,152 @@ class JW_Processor(processor.ProcessorABC):
 		leading_os_ele   = make_leading_pair(os_ele_left,os_diele)
 		subleading_os_ele= make_leading_pair(os_ele_right,os_diele)
 
+		##-----------  Cut flow3: OSSF
+		cut3 = np.ones(len(flat_dim(leading_os_diele))) * 3
 
-		
-
-		## -- Z-mass window --
+		# Helper function: Zmass window
 		def makeZmass_window_mask(dielecs,start=60,end=120):
 			mask = (dielecs.mass >= start) & (dielecs.mass <= end)	
 			return mask
-
-		# -- Only Leading pair --
-		Zmass_mask = makeZmass_window_mask(leading_diele)
-		leading_Zwindow_ele = leading_ele[Zmass_mask]
-		subleading_Zwindow_ele = subleading_ele[Zmass_mask]
-		leading_Zwindow_diele = leading_diele[Zmass_mask]
 
 		# -- OS and Leading pair --
 		Zmass_mask_os = makeZmass_window_mask(leading_os_diele)
 		leading_os_Zwindow_ele = leading_os_ele[Zmass_mask_os]
 		subleading_os_Zwindow_ele = subleading_os_ele[Zmass_mask_os]
 		leading_os_Zwindow_diele = leading_os_diele[Zmass_mask_os]
+		
+
+		# for masking
+		Zmass_event_mask = makeZmass_window_mask(leading_diele)
+		Zmass_os_event_mask= ak.flatten(os_event_mask * Zmass_event_mask)
+		
+
+		Ele_Zmass_os_events = Ele_channel_events[Zmass_os_event_mask]
+
+		##-----------  Cut flow4: Zmass
+		cut4 = np.ones(len(flat_dim(leading_os_Zwindow_diele))) * 4
 
 
-		ele1PT  = flat_dim(leading_Zwindow_ele.pt)
-		ele1Eta = flat_dim(leading_Zwindow_ele.eta)
-		ele1Phi = flat_dim(leading_Zwindow_ele.phi)
-		ele2PT  = flat_dim(subleading_Zwindow_ele.pt)
-		ele2Eta = flat_dim(subleading_Zwindow_ele.eta)
-		ele2Phi = flat_dim(subleading_Zwindow_ele.phi)
-		Mee     = flat_dim(leading_Zwindow_diele.mass)
-		charge  = flat_dim(leading_Zwindow_diele.charge)
-
-		os_ele1PT  = flat_dim(leading_os_Zwindow_ele.pt)
-		os_ele1Eta = flat_dim(leading_os_Zwindow_ele.eta)
-		os_ele1Phi = flat_dim(leading_os_Zwindow_ele.phi)
-		os_ele2PT  = flat_dim(subleading_os_Zwindow_ele.pt)
-		os_ele2Eta = flat_dim(subleading_os_Zwindow_ele.eta)
-		os_ele2Phi = flat_dim(subleading_os_Zwindow_ele.phi)
-		os_Mee     = flat_dim(leading_os_Zwindow_diele.mass)
-		os_charge  = flat_dim(leading_os_Zwindow_diele.charge)
+		
+		## << Selection method -- Need validation >>
+		#print("a--->",len(Ele_channel_events))
+		#print("b--->",len(Ele_os_channel_events))
+		#print("b2--->",len(cut3))
+		#print("c--->",len(Ele_Zmass_os_events))
+		#print("c2--->",len(cut4))
 
 
+		ele1PT  = flat_dim(leading_os_Zwindow_ele.pt)
+		ele1Eta = flat_dim(leading_os_Zwindow_ele.eta)
+		ele1Phi = flat_dim(leading_os_Zwindow_ele.phi)
+		ele2PT  = flat_dim(subleading_os_Zwindow_ele.pt)
+		ele2Eta = flat_dim(subleading_os_Zwindow_ele.eta)
+		ele2Phi = flat_dim(subleading_os_Zwindow_ele.phi)
+		Mee	 = flat_dim(leading_os_Zwindow_diele.mass)
+		charge  = flat_dim(leading_os_Zwindow_diele.charge)
+		
+		# --- Apply weight and hist  
+		weights = processor.Weights(len(cut2))
 
-		print("#5 Leading PT : {0}".format(len(ele1PT)))
-		print("#5 Leading os PT  {0}".format(len(os_ele1PT)))
+
+		# --- skim cut-weight 
+		def skim_weight(arr):
+			mask1 = ~ak.is_none(arr)
+			subarr = arr[mask1]
+			mask2 = subarr !=0
+			return ak.to_numpy(subarr[mask2])
+
+		cuts = ak.flatten(Zmass_mask_os)
+		#if not isData:
+		#	weights.add('pileup',pu)		
 
 
+		# Initial events
 		out["sumw"][dataset] += len(events)
-	
+
+
+		# Cut flow loop
+		for cut in [cut0,cut1,cut2,cut3,cut4]:
+			out["cutflow"].fill(
+				dataset = dataset,
+				cutflow=cut
+			)
+
+		# Primary vertex
+		out['nPV'].fill(
+			dataset=dataset,
+			nPV = nPV,
+			weight = weights.weight()
+		)
+
+		print('pu: ',weights.weight())
+		print('pu cut4: ',skim_weight(weights.weight() * cuts))
+		# Physics varibles passing Zwindow
 		out["mass"].fill(
 			dataset=dataset,
-			mass=Mee
-		)
-		out["charge"].fill(
-			dataset=dataset,
-			charge=charge
+			mass=Mee,
+			weight = skim_weight(weights.weight() * cuts)
 		)
 		out["ele1pt"].fill(
 			dataset=dataset,
-			ele1pt=ele1PT
+			ele1pt=ele1PT,
+			weight = skim_weight(weights.weight() * cuts)
 		)
 		out["ele1eta"].fill(
 			dataset=dataset,
-			ele1eta=ele1Eta
+			ele1eta=ele1Eta,
+			weight = skim_weight(weights.weight() * cuts)
 		)
 		out["ele1phi"].fill(
 			dataset=dataset,
-			ele1phi=ele1Phi
+			ele1phi=ele1Phi,
+			weight = skim_weight(weights.weight() * cuts)
 		)
 		out["ele2pt"].fill(
 			dataset=dataset,
-			ele2pt=ele2PT
+			ele2pt=ele2PT,
+			weight = skim_weight(weights.weight() * cuts)
 		)
 		out["ele2eta"].fill(
 			dataset=dataset,
-			ele2eta=ele2Eta
+			ele2eta=ele2Eta,
+			weight = skim_weight(weights.weight() * cuts)
 		)
 		out["ele2phi"].fill(
 			dataset=dataset,
-			ele2phi=ele2Phi
+			ele2phi=ele2Phi,
+			weight = skim_weight(weights.weight() * cuts)
 		)
-
-		out["os_mass"].fill(
-			dataset=dataset,
-			os_mass=os_Mee
-		)
-		out["os_ele1pt"].fill(
-			dataset=dataset,
-			os_ele1pt=os_ele1PT
-		)
-		out["os_ele1eta"].fill(
-			dataset=dataset,
-			os_ele1eta=os_ele1Eta
-		)
-		out["os_ele1phi"].fill(
-			dataset=dataset,
-			os_ele1phi=os_ele1Phi
-		)
-		out["os_ele2pt"].fill(
-			dataset=dataset,
-			os_ele2pt=os_ele2PT
-		)
-		out["os_ele2eta"].fill(
-			dataset=dataset,
-			os_ele2eta=os_ele2Eta
-		)
-		out["os_ele2phi"].fill(
-			dataset=dataset,
-			os_ele2phi=os_ele2Phi
-		)
-
-
-
-
 		return out
 
 	# -- Finally! return accumulator
 	def postprocess(self,accumulator):
+
+#		scale={}
+#		for d in accumulator['nPV'].identifiers('dataset'):
+#			print('Scaling:',d.name)
+#			dset = d.name
+#			print('Xsec:',self._xsec)
+#			scale[d.name] = self._lumi * self._xsec
+#			
+#
+#
+#		for histname,h in accumulator.items():
+#			if histname == 'sumw' : continue
+#			if isinstance(h,hist.Hist):
+#				h.scale(scale,axis='dataset')
+
 		return accumulator
 # <---- Class JW_Processor
 
 
 if __name__ == '__main__':
 
+	start = time.time()
 	parser = argparse.ArgumentParser()
 	
 	parser.add_argument('--nWorker', type=int,
-				help=" --nWorker 2", default=20)
+				help=" --nWorker 2", default=8)
 	parser.add_argument('--metadata', type=str,
 				help="--metadata xxx.json")
 	parser.add_argument('--dataset', type=str,
@@ -396,22 +439,52 @@ if __name__ == '__main__':
 	metadata = args.metadata
 	data_sample = args.dataset
 	year='2018'
-	
+	xsecDY=2137.0
 	
 	## Json file reader
 	with open(metadata) as fin:
 		datadict = json.load(fin)
-	
+
+
+	## File quality check
+
 	filelist = glob.glob(datadict[data_sample])
-	print(filelist)
+
+	'''
+	print("Cheking file quality...")
+	print("Initial file size: ",len(filelist))
+	trash_idx=[]
+	for idx in range(len(filelist)):
+
+		# IsEmpty file?
+		if os.stat(filelist[idx]).st_size == 0:
+			trash_idx.append(idx)
+			print("Empty file: ",filelist[idx])
+		
+		# IsNoEvent?
+		events = NanoEventsFactory.from_root(filelist[idx], schemaclass=NanoAODSchema).events()		
+		if len(events) == 0:
+			trash_idx.append(idx)
+			print("No event file: ",filelist[idx])
+		
+	filelist = np.delete(filelist,trash_idx).tolist()
+	print("Good file size: ",len(filelist))
+	'''
 	sample_name = data_sample.split('_')[0]
 	setname = metadata.split('.')[0].split('/')[1]
 	
 	
-	## Read Correction file
-	corr_file = "../Corrections/corrections.coffea"
-	corrections = load(corr_file)
-	
+	## Read Correction file <-- on developing -->
+	#corr_file = "../Corrections/corrections.coffea"
+	#corr_file = "corrections.coffea"
+	#corrections = load(corr_file)
+
+	## Read PU weight file
+	#with open('../Corrections/Pileup/puWeight/pu_weight_RunAB.npy','rb') as f:
+	with open('pu_weight_RunAB.npy','rb') as f:
+		pu = np.load(f)
+
+
 	# test one file 
 	#sample_name="Egamma"
 	#filelist=["/x6/cms/store_Cert_314472-325175_13TeV_Legacy2018_Collisions18_JSON/data/Run2018A/EGamma/NANOAOD/UL2018_MiniAODv1_NanoAODv2-v1/280000/D628EAD9-EACA-0640-AF0C-A0698767F9DE_Skim.root"]
@@ -423,7 +496,8 @@ if __name__ == '__main__':
 	
 	
 	# Class -> Object
-	JW_Processor_instance = JW_Processor(year,setname)
+	#JW_Processor_instance = JW_Processor(year,setname,corrections,xsecDY)  <--on developing-->
+	JW_Processor_instance = JW_Processor(year,setname,xsecDY,pu)
 	
 	
 	## -->Multi-node Executor
