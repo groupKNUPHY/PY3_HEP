@@ -104,11 +104,11 @@ if __name__ == '__main__':
 	#MakeMCPileupDist(inFiles, outname)
 
 	startTime = time.time()
-	puWeight_arr = TestPileupWeight("data/data_2018_pileup_out.root","mc/mcPileupDist_DYToEE_M-50_NNPDF31_TuneCP5_13TeV-powheg-pythia8.root")	
+	puWeight_arr = TestPileupWeight("../data_2018_pileup_out_runAB.root","mc/mcPileupDist_DYToEE_M-50_NNPDF31_TuneCP5_13TeV-powheg-pythia8.root")	
 	print(puWeight_arr)
 	print(len(puWeight_arr))
 	
-	np.save('pu_weight.npy',np.array(puWeight_arr))
+	np.save('pu_weight_runAB.npy',np.array(puWeight_arr))
 
 	print("RunningTime : ", time.time() - startTime)
 	
