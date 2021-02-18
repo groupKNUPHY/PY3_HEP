@@ -84,6 +84,11 @@ class JW_Processor(processor.ProcessorABC):
 				hist.Cat("dataset","Dataset"),
 				hist.Bin("nPV","Number of Primary vertex",100, 0, 100),
 			),
+			"nPV_nw": hist.Hist(
+				"Events",
+				hist.Cat("dataset","Dataset"),
+				hist.Bin("nPV_nw","Number of Primary vertex",100, 0, 100),
+			),
 
 			"mass": hist.Hist(
 				"Events",
@@ -167,13 +172,13 @@ class JW_Processor(processor.ProcessorABC):
 			mask = ~ak.is_none(sub_arr)
 
 			return ak.to_numpy(sub_arr[mask])
-		# << drop na helper function <<
+		# << drop na helper function >>
 		def drop_na(arr):
 
 			mask = ~ak.is_none(arr)
 
 			return arr[mask]
-		# << drop na helper function <<
+		# << drop na helper function >>
 		def drop_na_np(arr):
 
 			mask = ~np.isnan(arr)
@@ -205,16 +210,18 @@ class JW_Processor(processor.ProcessorABC):
 
 		
 		Initial_events = events
-		events = events[single_ele_triggers_arr | double_ele_triggers_arr]
+		print("#### Initial events: ",Initial_events)
+		#events = events[single_ele_triggers_arr | double_ele_triggers_arr]
+		events = events[double_ele_triggers_arr]
 		
 		##----------- Cut flow1: Passing Triggers
 		cut1 = np.ones(len(events))
-		
+		print("#### cut1: ",len(cut1))
 		# Particle Identification
 		Electron = events.Electron
 
 		def Electron_selection(ele):
-			return(ele.pt > 20) & (np.abs(ele.eta) < 2.5) & (ele.cutBased > 1)
+			return(ele.pt > 25) & (np.abs(ele.eta) < 2.5) & (ele.cutBased > 2)
 		
 
 		# Electron channel
@@ -225,6 +232,7 @@ class JW_Processor(processor.ProcessorABC):
 
 		##-----------  Cut flow2: Electron channel
 		cut2 = np.ones(len(Ele_channel_events)) * 2
+		print("#### cut2: ",len(cut2))
 		
 		# --- Calculate Scale factor weight
 		
@@ -236,10 +244,22 @@ class JW_Processor(processor.ProcessorABC):
 			get_ele_reco_sf = self._corrections['get_ele_reco_sf'][self._year]
 			get_ele_loose_id_sf = self._corrections['get_ele_loose_id_sf'][self._year]
 
+
+			get_ele_trig_leg1_SF		= self._corrections['get_ele_trig_leg1_SF'][self._year]
+			get_ele_trig_leg1_data_Eff	= self._corrections['get_ele_trig_leg1_data_Eff'][self._year]
+			get_ele_trig_leg1_mc_Eff	= self._corrections['get_ele_trig_leg1_mc_Eff'][self._year]
+			get_ele_trig_leg2_SF		= self._corrections['get_ele_trig_leg2_SF'][self._year]
+			get_ele_trig_leg2_data_Eff  = self._corrections['get_ele_trig_leg2_data_Eff'][self._year]
+			get_ele_trig_leg2_mc_Eff	= self._corrections['get_ele_trig_leg2_mc_Eff'][self._year]
+
+
+
+
+
 			# PU weight with custom made npy and multi-indexing
 			pu_weight_idx = ak.values_astype(Ele_channel_events.Pileup.nTrueInt,"int64")
 			pu = self._puweight_arr[pu_weight_idx]
-			nPV = Ele_channel_events.Pileup.nTrueInt
+			nPV = Ele_channel_events.PV.npvsGood
 		
 		else:
 			nPV = Ele_channel_events.PV.npvsGood
@@ -278,6 +298,22 @@ class JW_Processor(processor.ProcessorABC):
 		leading_ele   = make_leading_pair(ele_left,diele)
 		subleading_ele= make_leading_pair(ele_right,diele)
 
+		# -- Scale Factor for each electron
+
+		def Trigger_Weight(eta1,pt1,eta2,pt2):
+			per_ev_MC =\
+			get_ele_trig_leg1_mc_Eff(eta1,pt1) * get_ele_trig_leg2_mc_Eff(eta2,pt2) +\
+			get_ele_trig_leg1_mc_Eff(eta2,pt2) * get_ele_trig_leg2_mc_Eff(eta1,pt1) -\
+			get_ele_trig_leg1_mc_Eff(eta1,pt1) * get_ele_trig_leg1_mc_Eff(eta2,pt2)
+
+			per_ev_data =\
+			get_ele_trig_leg1_data_Eff(eta1,pt1) * get_ele_trig_leg1_SF(eta1,pt1) * get_ele_trig_leg2_data_Eff(eta2,pt2) * get_ele_trig_leg2_SF(eta2,pt2) +\
+			get_ele_trig_leg1_data_Eff(eta2,pt2) * get_ele_trig_leg1_SF(eta2,pt2) * get_ele_trig_leg2_data_Eff(eta1,pt1) * get_ele_trig_leg2_SF(eta1,pt1) -\
+			get_ele_trig_leg1_data_Eff(eta1,pt1) * get_ele_trig_leg1_SF(eta1,pt1) * get_ele_trig_leg1_data_Eff(eta2,pt2) * get_ele_trig_leg1_SF(eta2,pt2)
+
+			return per_ev_data/per_ev_MC
+			
+
 		if not isData:
 			ele_loose_id_sf = get_ele_loose_id_sf(ak.flatten(leading_ele.deltaEtaSC + leading_ele.eta),ak.flatten(leading_ele.pt))* get_ele_loose_id_sf(ak.flatten(subleading_ele.deltaEtaSC + subleading_ele.eta),ak.flatten(subleading_ele.pt))
 			#print("Ele ID SC---->",ele_loose_id_sf)
@@ -285,6 +321,15 @@ class JW_Processor(processor.ProcessorABC):
 			ele_reco_sf = get_ele_reco_sf(ak.flatten(leading_ele.deltaEtaSC + leading_ele.eta),ak.flatten(leading_ele.pt))* get_ele_reco_sf(ak.flatten(subleading_ele.deltaEtaSC + subleading_ele.eta),ak.flatten(subleading_ele.pt))
 			#print("Ele RECO SC---->",ele_reco_sf)
 		
+		
+			eta1 = ak.flatten(leading_ele.deltaEtaSC + leading_ele.eta)
+			eta2 = ak.flatten(subleading_ele.deltaEtaSC + subleading_ele.eta)
+			pt1  = ak.flatten(leading_ele.pt)	
+			pt2  = ak.flatten(subleading_ele.pt)
+
+			ele_trig_weight = Trigger_Weight(eta1,pt1,eta2,pt2)
+			print("#### Test print trigger weight ####")
+			print(ele_trig_weight)
 
 		# --OS and Leading pair --
 		leading_os_diele = make_leading_pair(os_diele,os_diele)
@@ -293,6 +338,7 @@ class JW_Processor(processor.ProcessorABC):
 
 		##-----------  Cut flow3: OSSF
 		cut3 = np.ones(len(flat_dim(leading_os_diele))) * 3
+		print("#### cut3: ",len(cut3))
 
 		# Helper function: Zmass window
 		def makeZmass_window_mask(dielecs,start=60,end=120):
@@ -315,6 +361,7 @@ class JW_Processor(processor.ProcessorABC):
 
 		##-----------  Cut flow4: Zmass
 		cut4 = np.ones(len(flat_dim(leading_os_Zwindow_diele))) * 4
+		print("#### cut4: ",len(cut4))
 
 
 		
@@ -351,6 +398,7 @@ class JW_Processor(processor.ProcessorABC):
 			weights.add('pileup',pu)		
 			weights.add('ele_id',ele_loose_id_sf)		
 			weights.add('ele_reco',ele_reco_sf)		
+			#weights.add('ele_trigger',ele_trig_weight)		
 
 		# Initial events
 		out["sumw"][dataset] += len(Initial_events)
@@ -363,11 +411,17 @@ class JW_Processor(processor.ProcessorABC):
 				cutflow=cut
 			)
 
+		
+
 		# Primary vertex
 		out['nPV'].fill(
 			dataset=dataset,
 			nPV = nPV,
 			weight = weights.weight()
+		)
+		out['nPV_nw'].fill(
+			dataset=dataset,
+			nPV_nw = nPV
 		)
 
 		# Physics varibles passing Zwindow
@@ -450,36 +504,15 @@ if __name__ == '__main__':
 	data_sample = args.dataset
 	year='2018'
 	xsecDY=2137.0
-	
+
 	## Json file reader
 	with open(metadata) as fin:
 		datadict = json.load(fin)
 
 
-	## File quality check
 
 	filelist = glob.glob(datadict[data_sample])
 
-	'''
-	print("Cheking file quality...")
-	print("Initial file size: ",len(filelist))
-	trash_idx=[]
-	for idx in range(len(filelist)):
-
-		# IsEmpty file?
-		if os.stat(filelist[idx]).st_size == 0:
-			trash_idx.append(idx)
-			print("Empty file: ",filelist[idx])
-		
-		# IsNoEvent?
-		events = NanoEventsFactory.from_root(filelist[idx], schemaclass=NanoAODSchema).events()		
-		if len(events) == 0:
-			trash_idx.append(idx)
-			print("No event file: ",filelist[idx])
-		
-	filelist = np.delete(filelist,trash_idx).tolist()
-	print("Good file size: ",len(filelist))
-	'''
 	sample_name = data_sample.split('_')[0]
 	setname = metadata.split('.')[0].split('/')[1]
 	
@@ -495,10 +528,14 @@ if __name__ == '__main__':
 		pu = np.load(f)
 
 
-	# test one file 
-	#sample_name="Egamma"
-	#filelist=["/x6/cms/store_Cert_314472-325175_13TeV_Legacy2018_Collisions18_JSON/data/Run2018A/EGamma/NANOAOD/UL2018_MiniAODv1_NanoAODv2-v1/280000/D628EAD9-EACA-0640-AF0C-A0698767F9DE_Skim.root"]
-	
+#	# test one file 
+#	sample_name="DY"
+#	setname="DY"
+#	filelist=["/x6/cms/store_skim_2ElIdPt20/mc/RunIISummer19UL18NanoAODv2/DYToEE_M-50_NNPDF31_TuneCP5_13TeV-powheg-pythia8/NANOAODSIM/106X_upgrade2018_realistic_v15_L1v1-v1/280000/59AB328B-F0E3-F544-98BB-E5E55577C649_skim_2ElIdPt20.root"]
+#
+
+
+
 	print(sample_name)
 	samples = {
 		sample_name : filelist
@@ -521,6 +558,7 @@ if __name__ == '__main__':
 	)
 	
 	outname = data_sample + '.futures'
+	#outname = 'DY_test.futures'
 	save(result,outname)
 	
 	elapsed_time = time.time() - start
