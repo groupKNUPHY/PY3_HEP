@@ -1,11 +1,12 @@
 ### Setup pythonic HEP tools  
 Lib list:  
- - [uproot3,uproot4](https://github.com/scikit-hep/uproot)
- - [awkward,awkward1](https://github.com/scikit-hep/awkward-array)
+ - [uproot4](https://github.com/scikit-hep/uproot)
+ - [awkward1](https://github.com/scikit-hep/awkward-array)
  - [numba](https://numba.pydata.org/)
  - [mplHEP](https://github.com/scikit-hep/mplhep)
  - [boost_histogram](https://github.com/scikit-hep/boost-histogram)
  - [coffea](https://github.com/CoffeaTeam/coffea)
+ - [pyhf](https://pyhf.github.io/pyhf-tutorial/introduction.html)
 ```bash
 source /home/jwkim/Anaconda3/setup.sh  
 ```  
